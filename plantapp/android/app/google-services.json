@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "822512347396",
+    "firebase_url": "https://smart-garden-64cd4-default-rtdb.firebaseio.com",
+    "project_id": "smart-garden-64cd4",
+    "storage_bucket": "smart-garden-64cd4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:822512347396:android:24bc57f183405f9e1a0851",
+        "android_client_info": {
+          "package_name": "com.example.plantapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDYR8629dUKlKzgl_A3HRt9fGFMsAT8kYA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
