@@ -1,19 +1,12 @@
 #include "HienThi.h"
 #include <stdint.h>
 #include <Firebase_ESP_Client.h>
-
-private:
-FirebaseData *fbdoPtr = nullptr; // con trỏ tới FirebaseData
-
-public:
-void ganFirebase(FirebaseData *fbdo); // khai báo hàm gán fbdo
-const unsigned long THOI_GIAN_CAP_NHAT_MAN_HINH = 8000;
 #define TFT_DARKRED tft.color565(139, 0, 0)
 #define TFT_GRAY tft.color565(128, 128, 128)
 #define TFT_LIGHTBLUE tft.color565(173, 216, 230)
 bool daChuyenSangChonCay = false;
-
-// Constructor - Cải tiến layout và kích thước nút
+const unsigned long THOI_GIAN_CAP_NHAT_MAN_HINH = 8000;
+// Constructor - Cáº£i tiáº¿n layout vÃ  kÃ­ch thÆ°á»›c nÃºt
 HienThi::HienThi(int h, int c) : soHang(h),
                                  soCot(c),
                                  trangThaiHienThi(0),
@@ -22,46 +15,46 @@ HienThi::HienThi(int h, int c) : soHang(h),
                                  diemChamX(0),
                                  diemChamY(0)
 {
-    // Khởi tạo màn hình TFT
+    // Khá»Ÿi táº¡o mÃ n hÃ¬nh TFT
     tft.init();
     tft.setRotation(1);
     tft.fillScreen(MAU_NEN);
 
-    // Khởi tạo vector luongCay với kích thước soHang x soCot
+    // Khá»Ÿi táº¡o vector luongCay vá»›i kÃ­ch thÆ°á»›c soHang x soCot
     luongCay.resize(soHang);
     for (int i = 0; i < soHang; i++)
     {
         luongCay[i].resize(soCot, nullptr);
     }
 
-    // Thiết lập luống đang chọn mặc định
+    // Thiáº¿t láº­p luá»‘ng Ä‘ang chá»n máº·c Ä‘á»‹nh
     luongDangChon[0] = 0;
     luongDangChon[1] = 0;
 
-    // KHỞI TẠO CÁC NÚT VỚI KÍCH THƯỚC VÀ VỊ TRÍ
+    // KHá»žI Táº O CÃC NÃšT Vá»šI KÃCH THÆ¯á»šC VÃ€ Vá»Š TRÃ
 
-    // Nút Menu (góc phải trên)
+    // NÃºt Menu (gÃ³c pháº£i trÃªn)
     nutMenu = {230, 210, 80, 25, "MENU", false};
 
-    // Nút Quay lại cho màn hình chính (góc trái dưới)
+    // NÃºt Quay láº¡i cho mÃ n hÃ¬nh chÃ­nh (gÃ³c trÃ¡i dÆ°á»›i)
     nutQuayLai = {10, 210, 80, 25, "<THOAT", false};
-    // Nút Thoát riêng cho giao diện MENU
+    // NÃºt ThoÃ¡t riÃªng cho giao diá»‡n MENU
     nutThoatMenu = {(tft.width() - 80) / 2, 200, 80, 25, "<THOAT", false};
 
-    // Nút chuyển luống
+    // NÃºt chuyá»ƒn luá»‘ng
     nutChonCay = {120, 210, 80, 25, "NEXT>", false};
 
-    // Các nút điều khiển mới với spacing hợp lý
+    // CÃ¡c nÃºt Ä‘iá»u khiá»ƒn má»›i vá»›i spacing há»£p lÃ½
     nutAutoManual = {180, 120, 120, 35, "MANUAL", false};
     nutCaiDat = {50, 180, 100, 35, "CAI DAT", false};
     nutThongKe = {170, 180, 100, 35, "THONG KE", false};
 
-    // Các nút điều khiển thiết bị (cho chế độ manual) - căn đều
+    // CÃ¡c nÃºt Ä‘iá»u khiá»ƒn thiáº¿t bá»‹ (cho cháº¿ Ä‘á»™ manual) - cÄƒn Ä‘á»u
     nutBom = {40, 180, 80, 25, "BOM", false};
     nutQuat = {130, 180, 80, 25, "QUAT", false};
     nutDen = {220, 180, 80, 25, "DEN", false};
 
-    // Khởi tạo các nút chọn loại cây với layout grid 2x3
+    // Khá»Ÿi táº¡o cÃ¡c nÃºt chá»n loáº¡i cÃ¢y vá»›i layout grid 2x3
     nutChonLoaiCay.resize(SO_LOAI_CAY);
     int startX = 40;
     int startY = 70;
@@ -70,7 +63,7 @@ HienThi::HienThi(int h, int c) : soHang(h),
     int spacingX = 120;
     int spacingY = 40;
 
-    // Sắp xếp theo grid 2 cột
+    // Sáº¯p xáº¿p theo grid 2 cá»™t
     for (int i = 0; i < SO_LOAI_CAY; i++)
     {
         int row = i / 2;
@@ -89,15 +82,15 @@ HienThi::HienThi(int h, int c) : soHang(h),
     nutChonLoaiCay[4].nhan = "DUA CHUOT";
     nutChonLoaiCay[5].nhan = "DAU TAY";
 
-    // Thiết lập cảm ứng
+    // Thiáº¿t láº­p cáº£m á»©ng
     uint16_t calData[5] = {275, 3620, 264, 3532, 1};
     tft.setTouch(calData);
 }
 
-// VẼ HEADER VỚI GRADIENT ĐẸP HƠN
+// Váº¼ HEADER Vá»šI GRADIENT Äáº¸P HÆ N
 void HienThi::veHeader(const String &tieuDe, uint16_t mauChinh)
 {
-    // Vẽ gradient header với hiệu ứng đẹp hơn
+    // Váº½ gradient header vá»›i hiá»‡u á»©ng Ä‘áº¹p hÆ¡n
     for (int i = 0; i < 35; i++)
     {
         uint16_t mau;
@@ -120,10 +113,10 @@ void HienThi::veHeader(const String &tieuDe, uint16_t mauChinh)
         tft.drawFastHLine(0, i, 320, mau);
     }
 
-    // Đường viền header
+    // ÄÆ°á»ng viá»n header
     tft.drawFastHLine(0, 35, 320, TFT_WHITE);
 
-    // Tiêu đề căn giữa
+    // TiÃªu Ä‘á» cÄƒn giá»¯a
     tft.setTextColor(TFT_WHITE);
     tft.setTextSize(2);
     int textWidth = tieuDe.length() * 12;
@@ -132,7 +125,7 @@ void HienThi::veHeader(const String &tieuDe, uint16_t mauChinh)
     tft.println(tieuDe);
 }
 
-// Gán thông tin phần cứng
+// GÃ¡n thÃ´ng tin pháº§n cá»©ng
 void HienThi::ganThongTinPhanCung(Adafruit_MCP23X17 *mcp,
                                   const int chanDHT_[2][2],
                                   const int chanDatAm_[2][2],
@@ -151,35 +144,35 @@ void HienThi::ganThongTinPhanCung(Adafruit_MCP23X17 *mcp,
     chanQuat = chanQuat_;
 }
 
-// VẼ CARD THÔNG TIN VỚI SHADOW VÀ BORDER ĐẸP
+// Váº¼ CARD THÃ”NG TIN Vá»šI SHADOW VÃ€ BORDER Äáº¸P
 void HienThi::veCardThongTin(int x, int y, int w, int h)
 {
-    // Hiệu ứng bóng
+    // Hiá»‡u á»©ng bÃ³ng
     tft.fillRoundRect(x + 2, y + 2, w, h, 8, TFT_DARKGREY);
 
-    // Card chính
+    // Card chÃ­nh
     tft.fillRoundRect(x, y, w, h, 8, TFT_BLACK);
 
-    // Viền với gradient
+    // Viá»n vá»›i gradient
     tft.drawRoundRect(x, y, w, h, 8, TFT_CYAN);
     tft.drawRoundRect(x + 1, y + 1, w - 2, h - 2, 7, TFT_LIGHTBLUE);
 }
 
-// CẢI TIẾN HÀM VẼ THANH TIẾN TRÌNH
+// Cáº¢I TIáº¾N HÃ€M Váº¼ THANH TIáº¾N TRÃŒNH
 void HienThi::veThanhTienTrinh(int x, int y, int width, int height, float giaTriHienTai, float giaTriToiDa, uint16_t mauThanh)
 {
-    // Viền
+    // Viá»n
     tft.drawRoundRect(x, y, width, height, 3, TFT_WHITE);
     tft.fillRoundRect(x + 1, y + 1, width - 2, height - 2, 2, TFT_BLACK);
 
-    // Tính toán chiều rộng thanh
+    // TÃ­nh toÃ¡n chiá»u rá»™ng thanh
     int chieuRongThanh = (int)((giaTriHienTai / giaTriToiDa) * (width - 4));
     if (chieuRongThanh > width - 4)
         chieuRongThanh = width - 4;
     if (chieuRongThanh < 0)
         chieuRongThanh = 0;
 
-    // Vẽ thanh với gradient màu theo mức độ
+    // Váº½ thanh vá»›i gradient mÃ u theo má»©c Ä‘á»™
     for (int i = 0; i < chieuRongThanh; i++)
     {
         float ratio = (float)i / (width - 4);
@@ -196,12 +189,12 @@ void HienThi::veThanhTienTrinh(int x, int y, int width, int height, float giaTri
     }
 }
 
-// VẼ GIAO DIỆN CHÍNH
+// Váº¼ GIAO DIá»†N CHÃNH
 void HienThi::veGiaoDienChinh()
 {
     tft.fillScreen(TFT_BLACK);
 
-    // Reset lại vị trí nút
+    // Reset láº¡i vá»‹ trÃ­ nÃºt
     nutQuayLai = {10, 210, 80, 25, "<THOAT", false};
     nutChonCay = {120, 210, 80, 25, "NEXT>", false};
     nutMenu = {230, 210, 80, 25, "MENU", false};
@@ -210,19 +203,19 @@ void HienThi::veGiaoDienChinh()
     nutQuat.y = 180;
     nutDen.y = 180;
 
-    // Tiêu đề
-    veHeader("VƯỜN THÔNG MINH", TFT_CYAN);
+    // TiÃªu Ä‘á»
+    veHeader("VUON THONG MINH", TFT_CYAN);
 
-    // Thông tin chế độ
-    tft.fillRect(10, 40, 200, 20, TFT_BLACK); // Xóa nền dòng trước
+    // ThÃ´ng tin cháº¿ Ä‘á»™
+    tft.fillRect(10, 40, 200, 20, TFT_BLACK); // XÃ³a ná»n dÃ²ng trÆ°á»›c
     tft.setTextSize(2);
     tft.setTextColor(TFT_WHITE);
     tft.setCursor(10, 40);
-    tft.print("Chế độ: ");
+    tft.print("Che do: ");
     tft.setTextColor(cheDoHienTai == CHE_DO_AUTO ? TFT_GREEN : TFT_ORANGE);
-    tft.print(cheDoHienTai == CHE_DO_AUTO ? "TỰ ĐỘNG" : "THỦ CÔNG");
+    tft.print(cheDoHienTai == CHE_DO_AUTO ? "TU DONG" : "THU CONG");
 
-    // Vị trí luống đang chọn
+    // Vá»‹ trÃ­ luá»‘ng Ä‘ang chá»n
     int hang, cot;
     layLuongDangChon(hang, cot);
     HeThongVuon *cay = luongCay[hang][cot];
@@ -230,14 +223,14 @@ void HienThi::veGiaoDienChinh()
     tft.setTextColor(TFT_YELLOW);
     tft.setTextSize(2);
     tft.setCursor(10, 60);
-    tft.print("LUỐNG [" + String(hang) + "][" + String(cot) + "]");
+    tft.print("LUONG [" + String(hang) + "][" + String(cot) + "]");
 
     if (cay == nullptr)
     {
-        // Nếu chưa trồng cây
+        // Náº¿u chÆ°a trá»“ng cÃ¢y
         tft.setTextColor(TFT_GREEN);
         tft.setCursor(10, 90);
-        tft.print("CHƯA CÓ CÂY TẠI LUỐNG NÀY");
+        tft.print("CHUA CO CAY TAI LUONG NAY");
 
         veNut(nutMenu);
         veNut(nutChonCay);
@@ -245,13 +238,13 @@ void HienThi::veGiaoDienChinh()
         return;
     }
 
-    // Loại cây
+    // Loáº¡i cÃ¢y
     tft.setTextColor(TFT_CYAN);
     tft.setCursor(10, 80);
-    tft.print("Loại: ");
+    tft.print("Loai: ");
     tft.print(cay->layCauHinhCay().layTen());
 
-    // Hiển thị cảm biến
+    // Hiá»ƒn thá»‹ cáº£m biáº¿n
     int y = 100;
     veBieuTuongDoAm(10, y);
     tft.setCursor(30, y);
@@ -274,7 +267,7 @@ void HienThi::veGiaoDienChinh()
     tft.print(nhiet, 1);
     tft.print("C");
 
-    // Nút điều khiển thiết bị (nếu ở chế độ thủ công)
+    // NÃºt Ä‘iá»u khiá»ƒn thiáº¿t bá»‹ (náº¿u á»Ÿ cháº¿ Ä‘á»™ thá»§ cÃ´ng)
     if (cheDoHienTai == CHE_DO_MANUAL)
     {
         veNut(nutBom);
@@ -282,30 +275,30 @@ void HienThi::veGiaoDienChinh()
         veNut(nutDen);
     }
 
-    // Nút điều hướng chung
+    // NÃºt Ä‘iá»u hÆ°á»›ng chung
     veNut(nutMenu);
     veNut(nutChonCay);
     veNut(nutQuayLai);
 }
 
-// CẢI TIẾN GIAO DIỆN MENU
+// Cáº¢I TIáº¾N GIAO DIá»†N MENU
 void HienThi::veGiaoDienMenu()
 {
     tft.fillScreen(TFT_BLACK);
-    veHeader("MENU CHÍNH", TFT_GREEN);
+    veHeader("MENU CHINH", TFT_GREEN);
 
     tft.setTextSize(2);
     tft.setTextColor(TFT_ORANGE);
     tft.setCursor(10, 40);
-    tft.print("Chế độ: ");
-    tft.print(cheDoHienTai == CHE_DO_AUTO ? "TỰ ĐỘNG" : "THỦ CÔNG");
+    tft.print("Che do: ");
+    tft.print(cheDoHienTai == CHE_DO_AUTO ? "TU DONG" : "THU CONG");
 
     tft.setTextSize(2);
     tft.setTextColor(TFT_WHITE);
     tft.setCursor(10, 60);
-    tft.print("Chọn chức năng:");
+    tft.print("Chon chuc nang:");
 
-    // Đặt vị trí đều 5 nút
+    // Äáº·t vá»‹ trÃ­ Ä‘á»u 5 nÃºt
     int nutW = 100;
     int nutH = 28;
     int nutX = (320 - nutW) / 2;
@@ -318,7 +311,7 @@ void HienThi::veGiaoDienMenu()
     nutCaiDat = {nutX, startY + 3 * (nutH + space), nutW, nutH, "CAI DAT", false};
     nutQuayLai = {nutX, startY + 4 * (nutH + space), nutW, nutH, "THOAT", false};
 
-    // Vẽ nút
+    // Váº½ nÃºt
     veNut(nutAutoManual);
     veNut(nutThongKe);
     veNut(nutTrongCay);
@@ -326,30 +319,30 @@ void HienThi::veGiaoDienMenu()
     veNut(nutQuayLai);
 }
 
-// GIAO DIỆN CHỌN LOẠI CÂY
+// GIAO DIá»†N CHá»ŒN LOáº I CÃ‚Y
 void HienThi::veGiaoDienChonLoaiCay()
 {
     tft.fillScreen(TFT_BLACK);
 
-    veHeader("CHỌN LOẠI CÂY", TFT_GREEN);
+    veHeader("CHON LOAI CAY", TFT_GREEN);
 
-    // Hiển thị vị trí đang chọn
+    // Hiá»ƒn thá»‹ vá»‹ trÃ­ Ä‘ang chá»n
     tft.setTextColor(TFT_YELLOW);
     tft.setTextSize(2);
     tft.setCursor(20, 45);
-    tft.print("Luống [");
+    tft.print("Luong [");
     tft.print(luongDangChon[0]);
     tft.print("][");
     tft.print(luongDangChon[1]);
     tft.print("]");
 
-    // Nếu đã trồng cây thì hiển thị tên
+    // Náº¿u Ä‘Ã£ trá»“ng cÃ¢y thÃ¬ hiá»ƒn thá»‹ tÃªn
     HeThongVuon *cay = layHeThongVuon(luongDangChon[0], luongDangChon[1]);
     if (cay != nullptr)
     {
         tft.setTextColor(TFT_CYAN);
-        tft.setCursor(20, 70); // hiển thị tại dòng riêng
-        tft.print("Đã có: ");
+        tft.setCursor(20, 70); // hiá»ƒn thá»‹ táº¡i dÃ²ng riÃªng
+        tft.print("Da co: ");
         tft.print(cay->layCauHinhCay().layTen());
     }
 
@@ -372,17 +365,17 @@ void HienThi::veGiaoDienChonLoaiCay()
         veNut(nutChonLoaiCay[i]);
     }
 
-    // Nút quay lại
+    // NÃºt quay láº¡i
     nutQuayLai = {10, 210, 80, 25, "THOAT", false};
     veNut(nutQuayLai);
 }
 
-// HÀM CHÍNH VẼ GIAO DIỆN
+// HÃ€M CHÃNH Váº¼ GIAO DIá»†N
 void HienThi::veGiaoDien()
 {
     switch (trangThaiHienThi)
     {
-    case 0: // Giao diện chính
+    case 0: // Giao diá»‡n chÃ­nh
         veGiaoDienChinh();
         break;
 
@@ -390,43 +383,43 @@ void HienThi::veGiaoDien()
         veGiaoDienMenu();
         break;
 
-    case 2: // Điều khiển
+    case 2: // Äiá»u khiá»ƒn
         veManHinhDieuKhien();
         break;
 
-    case 3: // Chọn loại cây
+    case 3: // Chá»n loáº¡i cÃ¢y
         veGiaoDienChonLoaiCay();
         break;
 
-    case 4: // Cài đặt
+    case 4: // CÃ i Ä‘áº·t
         tft.fillScreen(TFT_BLACK);
-        veHeader("CÀI ĐẶT", TFT_YELLOW);
+        veHeader("CAI DAT", TFT_YELLOW);
 
         tft.setTextColor(TFT_CYAN);
         tft.setTextSize(2);
         tft.setCursor(20, 60);
-        tft.println("Các tùy chọn cài đặt:");
+        tft.println("Cac tuy chon cai dat:");
 
         tft.setTextColor(TFT_WHITE);
         tft.setCursor(20, 80);
-        tft.println("- Ngưỡng cảm biến");
+        tft.println("- Nguong cam bien");
         tft.setCursor(20, 95);
-        tft.println("- Thời gian tưới nước");
+        tft.println("- Thoi gian tuoi nuoc");
         tft.setCursor(20, 125);
-        tft.println("- Reset hệ thống");
+        tft.println("- Reset he thong");
 
         tft.setTextColor(TFT_YELLOW);
         tft.setCursor(20, 150);
-        tft.println("Tính năng đang phát triển...");
+        tft.println("Tinh nang dang phat trien...");
 
         veNut(nutQuayLai);
         break;
 
-    case 5: // Thống kê
+    case 5: // Thá»‘ng kÃª
         tft.fillScreen(TFT_BLACK);
-        veHeader("THỐNG KÊ", TFT_RED);
+        veHeader("THONG KE", TFT_RED);
 
-        // Tính toán thống kê
+        // TÃ­nh toÃ¡n thá»‘ng kÃª
         int soCayDaTrong = 0;
         int soCayCanTuoi = 0;
         int soBomDangBat = 0;
@@ -453,11 +446,11 @@ void HienThi::veGiaoDien()
         tft.setTextColor(TFT_CYAN);
         tft.setTextSize(2);
         tft.setCursor(20, 60);
-        tft.println("Thống kê tổng quan:");
+        tft.println("Thong ke tong quan:");
 
         tft.setTextColor(TFT_WHITE);
         tft.setCursor(20, 80);
-        tft.print("Số cây đã trồng: ");
+        tft.print("So cay da trong: ");
         tft.setTextColor(TFT_GREEN);
         tft.print(soCayDaTrong);
         tft.setTextColor(TFT_WHITE);
@@ -465,25 +458,25 @@ void HienThi::veGiaoDien()
         tft.print(soHang * soCot);
 
         tft.setCursor(20, 100);
-        tft.print("Số cây cần tưới: ");
+        tft.print("So cay can tuoi: ");
         tft.setTextColor(soCayCanTuoi > 0 ? TFT_YELLOW : TFT_GREEN);
         tft.print(soCayCanTuoi);
 
         tft.setTextColor(TFT_WHITE);
         tft.setCursor(20, 120);
-        tft.print("Số bơm đang bật: ");
+        tft.print("So bom dang bat: ");
         tft.setTextColor(TFT_CYAN);
         tft.print(soBomDangBat);
 
-        // Hiệu suất hệ thống
+        // Hiá»‡u suáº¥t há»‡ thá»‘ng
         float hieuSuat = (float)soCayDaTrong / (soHang * soCot) * 100;
         tft.setTextColor(TFT_YELLOW);
         tft.setCursor(20, 150);
-        tft.println("Hiệu suất hệ thống:");
+        tft.println("Hieu suat he thong:");
 
         tft.setTextColor(TFT_WHITE);
         tft.setCursor(20, 170);
-        tft.print("Sử dụng: ");
+        tft.print("Su dung: ");
         tft.setTextColor(hieuSuat > 70 ? TFT_GREEN : (hieuSuat > 40 ? TFT_YELLOW : TFT_RED));
         tft.print(hieuSuat, 1);
         tft.print("%");
@@ -495,7 +488,7 @@ void HienThi::veGiaoDien()
     }
 }
 
-// CẬP NHẬT XỬ LÝ TOUCH ĐỂ PHẢN HỒI VỚI LAYOUT MỚI
+// Cáº¬P NHáº¬T Xá»¬ LÃ TOUCH Äá»‚ PHáº¢N Há»’I Vá»šI LAYOUT Má»šI
 void HienThi::capNhatTrangThaiNut()
 {
     uint16_t x, y;
@@ -515,7 +508,7 @@ void HienThi::capNhatTrangThaiNut()
             nutChonLoaiCay[i].dangDuocBam = false;
         }
 
-        daCham = false; // Reset để cho phép chạm lại
+        daCham = false; // Reset Ä‘á»ƒ cho phÃ©p cháº¡m láº¡i
         return;
     }
 
@@ -530,7 +523,7 @@ void HienThi::capNhatTrangThaiNut()
 
     switch (trangThaiHienThi)
     {
-    case 0: // Màn hình chính
+    case 0: // MÃ n hÃ¬nh chÃ­nh
         if (kiemTraNut(nutMenu, x, y))
         {
             trangThaiHienThi = 1;
@@ -552,11 +545,11 @@ void HienThi::capNhatTrangThaiNut()
         }
         else if (kiemTraNut(nutQuayLai, x, y))
         {
-            thongBaoCanhBao("Hệ thống đang hoạt động!");
+            thongBaoCanhBao("He thong dang hoat dong!");
         }
         else if (cheDoHienTai == CHE_DO_MANUAL)
         {
-            xuLyDieuKhienThuCong(x, y); // Xử lý các nút BƠM / QUẠT / ĐÈN tại màn chính
+            xuLyDieuKhienThuCong(x, y); // Xá»­ lÃ½ cÃ¡c nÃºt BÆ M / QUáº T / ÄÃˆN táº¡i mÃ n chÃ­nh
         }
         break;
 
@@ -575,7 +568,7 @@ void HienThi::capNhatTrangThaiNut()
 
                         if (!laTuDong)
                         {
-                            // Nếu vừa chuyển sang thủ công thì tắt hết relay
+                            // Náº¿u vá»«a chuyá»ƒn sang thá»§ cÃ´ng thÃ¬ táº¯t háº¿t relay
                             luongCay[i][j]->datTrangThaiBom(false);
                             luongCay[i][j]->datTrangThaiDen(false);
                             luongCay[i][j]->datTrangThaiQuat(false);
@@ -583,7 +576,7 @@ void HienThi::capNhatTrangThaiNut()
                     }
                 }
             }
-            thongBaoCanhBao(cheDoHienTai == CHE_DO_AUTO ? "Chế độ TỰ ĐỘNG" : "Chế độ THỦ CÔNG");
+            thongBaoCanhBao(cheDoHienTai == CHE_DO_AUTO ? "TU DONG" : "THU CONG");
             veGiaoDien();
         }
         else if (kiemTraNut(nutThongKe, x, y))
@@ -599,8 +592,8 @@ void HienThi::capNhatTrangThaiNut()
         }
         else if (kiemTraNut(nutCaiDat, x, y))
         {
-            // Sau này thêm giao diện cài đặt
-            thongBaoCanhBao("Đang phát triển");
+            // Sau nÃ y thÃªm giao diá»‡n cÃ i Ä‘áº·t
+            thongBaoCanhBao("Tinh nang dang phat trien!");
         }
         else if (kiemTraNut(nutQuayLai, x, y))
         {
@@ -609,7 +602,7 @@ void HienThi::capNhatTrangThaiNut()
         }
         break;
 
-    case 2: // Màn hình điều khiển
+    case 2: // MÃ n hÃ¬nh Ä‘iá»u khiá»ƒn
         if (cheDoHienTai == CHE_DO_MANUAL)
         {
             xuLyDieuKhienThuCong(x, y);
@@ -621,10 +614,10 @@ void HienThi::capNhatTrangThaiNut()
         }
         break;
 
-    case 3: // Giao diện chọn loại cây
+    case 3: // Giao diá»‡n chá»n loáº¡i cÃ¢y
         if (kiemTraNut(nutQuayLai, x, y))
         {
-            trangThaiHienThi = 1; // Về MENU
+            trangThaiHienThi = 1; // Vá» MENU
             veGiaoDien();
         }
         else
@@ -633,13 +626,13 @@ void HienThi::capNhatTrangThaiNut()
             {
                 if (kiemTraNut(nutChonLoaiCay[i], x, y))
                 {
-                    // Trồng cây tại vị trí đang chọn
+                    // Trá»“ng cÃ¢y táº¡i vá»‹ trÃ­ Ä‘ang chá»n
                     trongCayTaiViTri(luongDangChon[0], luongDangChon[1], i);
 
-                    // Đảm bảo luongDangChon vẫn trỏ đúng vị trí vừa trồng
-                    // (Đã được cập nhật trong hàm trongCayTaiViTri)
+                    // Äáº£m báº£o luongDangChon váº«n trá» Ä‘Ãºng vá»‹ trÃ­ vá»«a trá»“ng
+                    // (ÄÃ£ Ä‘Æ°á»£c cáº­p nháº­t trong hÃ m trongCayTaiViTri)
 
-                    trangThaiHienThi = 0; // Về giao diện chính
+                    trangThaiHienThi = 0; // Vá» giao diá»‡n chÃ­nh
                     veGiaoDien();
                     break;
                 }
@@ -647,8 +640,8 @@ void HienThi::capNhatTrangThaiNut()
         }
         break;
 
-    case 4: // Cài đặt
-    case 5: // Thống kê
+    case 4: // CÃ i Ä‘áº·t
+    case 5: // Thá»‘ng kÃª
         if (kiemTraNut(nutQuayLai, x, y))
         {
             trangThaiHienThi = 1;
@@ -658,7 +651,7 @@ void HienThi::capNhatTrangThaiNut()
     }
 }
 
-// XỬ LÝ ĐIỀU KHIỂN THỦ CÔNG
+// Xá»¬ LÃ ÄIá»€U KHIá»‚N THá»¦ CÃ”NG
 void HienThi::xuLyDieuKhienThuCong(int x, int y)
 {
     int hang = luongDangChon[0];
@@ -666,7 +659,7 @@ void HienThi::xuLyDieuKhienThuCong(int x, int y)
 
     if (luongCay[hang][cot] == nullptr)
     {
-        thongBaoCanhBao("Không có cây tại vị trí này!");
+        thongBaoCanhBao("Khong co cay tai luong nay!");
         return;
     }
 
@@ -676,13 +669,13 @@ void HienThi::xuLyDieuKhienThuCong(int x, int y)
     {
         bool trangThaiMoi = !luongCay[hang][cot]->layTrangThaiBom();
         luongCay[hang][cot]->datTrangThaiBom(trangThaiMoi);
-        thongBaoCanhBao(trangThaiMoi ? "Bật bơm" : "Tắt bơm");
+        thongBaoCanhBao(trangThaiMoi ? "Bat bom" : "Tat bom");
         coThayDoi = true;
 
-        // Gửi Firebase
+        // Gá»­i Firebase
         if (fbdoPtr != nullptr && Firebase.ready())
         {
-            String gardenId = "gardenId" + String(hang * SO_COT + cot + 1);
+            String gardenId = "gardenId" + String(hang * 2 + cot + 1);
             Firebase.RTDB.setInt(fbdoPtr, gardenId + "/mayBom", trangThaiMoi ? 1 : 0);
         }
     }
@@ -690,12 +683,12 @@ void HienThi::xuLyDieuKhienThuCong(int x, int y)
     {
         bool trangThaiMoi = !luongCay[hang][cot]->layTrangThaiQuat();
         luongCay[hang][cot]->datTrangThaiQuat(trangThaiMoi);
-        thongBaoCanhBao(trangThaiMoi ? "Bật quạt" : "Tắt quạt");
+        thongBaoCanhBao(trangThaiMoi ? "Bat quat" : "Tat quat");
         coThayDoi = true;
 
         if (fbdoPtr != nullptr && Firebase.ready())
         {
-            String gardenId = "gardenId" + String(hang * SO_COT + cot + 1);
+            String gardenId = "gardenId" + String(hang * 2 + cot + 1);
             Firebase.RTDB.setInt(fbdoPtr, gardenId + "/quat", trangThaiMoi ? 1 : 0);
         }
     }
@@ -703,12 +696,12 @@ void HienThi::xuLyDieuKhienThuCong(int x, int y)
     {
         bool trangThaiMoi = !luongCay[hang][cot]->layTrangThaiDen();
         luongCay[hang][cot]->datTrangThaiDen(trangThaiMoi);
-        thongBaoCanhBao(trangThaiMoi ? "Bật đèn" : "Tắt đèn");
+        thongBaoCanhBao(trangThaiMoi ? "Bat den" : "Tat den");
         coThayDoi = true;
 
         if (fbdoPtr != nullptr && Firebase.ready())
         {
-            String gardenId = "gardenId" + String(hang * SO_COT + cot + 1);
+            String gardenId = "gardenId" + String(hang * 2 + cot + 1);
             Firebase.RTDB.setInt(fbdoPtr, gardenId + "/den", trangThaiMoi ? 1 : 0);
         }
     }
@@ -724,31 +717,31 @@ void HienThi::xuLyDieuKhienThuCong(int x, int y)
                 luongDangChon[0] = 0;
             }
         }
-        thongBaoCanhBao("Chuyển luống");
+        thongBaoCanhBao("Chuyen luong");
         coThayDoi = true;
     }
 
     if (coThayDoi)
     {
-        veGiaoDien(); // Quay lại đúng giao diện hiện tại
+        veGiaoDien(); // Quay láº¡i Ä‘Ãºng giao diá»‡n hiá»‡n táº¡i
     }
 }
 
-// MÀN HÌNH ĐIỀU KHIỂN THỦ CÔNG
+// MÃ€N HÃŒNH ÄIá»€U KHIá»‚N THá»¦ CÃ”NG
 void HienThi::veManHinhDieuKhien()
 {
     tft.fillScreen(TFT_BLACK);
 
-    veHeader("ĐIỀU KHIỂN THỦ CÔNG", TFT_RED);
+    veHeader("DIEU KHIEN THU CONG", TFT_RED);
 
     int hang = luongDangChon[0];
     int cot = luongDangChon[1];
 
-    // Hiển thị thông tin luống đang chọn
+    // Hiá»ƒn thá»‹ thÃ´ng tin luá»‘ng Ä‘ang chá»n
     tft.setTextColor(TFT_YELLOW);
     tft.setTextSize(1);
     tft.setCursor(20, 45);
-    tft.print("Luống [");
+    tft.print("Luong [");
     tft.print(hang);
     tft.print("][");
     tft.print(cot);
@@ -760,75 +753,75 @@ void HienThi::veManHinhDieuKhien()
         tft.print(" - ");
         tft.print(luongCay[hang][cot]->layCauHinhCay().layTen());
 
-        // Card thông tin cảm biến
+        // Card thÃ´ng tin cáº£m biáº¿n
         veCardThongTin(10, 65, 300, 120);
 
         int yPos = 75;
         int spacing = 25;
 
-        // Hiển thị thông tin cảm biến
+        // Hiá»ƒn thá»‹ thÃ´ng tin cáº£m biáº¿n
         tft.setTextColor(TFT_WHITE);
         tft.setTextSize(2);
 
-        // Độ ẩm đất
+        // Äá»™ áº©m Ä‘áº¥t
         veBieuTuongDoAm(20, yPos);
         tft.setCursor(40, yPos);
-        tft.print("Độ ẩm: ");
+        tft.print("Do am: ");
         tft.setTextColor(TFT_CYAN);
         tft.print(luongCay[hang][cot]->layDoAmDat(), 1);
         tft.print("%");
 
-        // Nhiệt độ
+        // Nhiá»‡t Ä‘á»™
         yPos += spacing;
         veBieuTuongNhietDo(20, yPos);
         tft.setTextColor(TFT_WHITE);
         tft.setCursor(40, yPos);
-        tft.print("Nhiệt độ: ");
+        tft.print("Nhiet do: ");
         tft.setTextColor(TFT_RED);
         tft.print(luongCay[hang][cot]->layNhietDo(), 1);
         tft.print("C");
 
-        // Ánh sáng
+        // Ãnh sÃ¡ng
         yPos += spacing;
         veBieuTuongAnhSang(20, yPos);
         tft.setTextColor(TFT_WHITE);
         tft.setCursor(40, yPos);
-        tft.print("Ánh sáng: ");
+        tft.print("Anh sang: ");
         tft.setTextColor(TFT_YELLOW);
         tft.print(luongCay[hang][cot]->layAnhSang(), 1);
         tft.print(" lux");
 
-        // Trạng thái thiết bị hiện tại
+        // Tráº¡ng thÃ¡i thiáº¿t bá»‹ hiá»‡n táº¡i
         yPos += spacing;
         tft.setTextColor(TFT_LIGHTBLUE);
         tft.setCursor(20, yPos);
-        tft.print("Trạng thái hiện tại:");
+        tft.print("Trang thai hien tai:");
 
         yPos += 15;
         int xPos = 20;
 
-        // Hiển thị trạng thái bơm
+        // Hiá»ƒn thá»‹ tráº¡ng thÃ¡i bÆ¡m
         tft.fillRoundRect(xPos, yPos, 60, 15, 3,
                           luongCay[hang][cot]->layTrangThaiBom() ? TFT_GREEN : TFT_RED);
         tft.setTextColor(TFT_WHITE);
         tft.setCursor(xPos + 5, yPos + 3);
-        tft.print("BƠM: ");
+        tft.print("BOM: ");
         tft.print(luongCay[hang][cot]->layTrangThaiBom() ? "ON" : "OFF");
 
         xPos += 70;
-        // Hiển thị trạng thái quạt
+        // Hiá»ƒn thá»‹ tráº¡ng thÃ¡i quáº¡t
         tft.fillRoundRect(xPos, yPos, 60, 15, 3,
                           luongCay[hang][cot]->layTrangThaiQuat() ? TFT_GREEN : TFT_RED);
         tft.setCursor(xPos + 5, yPos + 3);
-        tft.print("QUẠT: ");
+        tft.print("QUAT: ");
         tft.print(luongCay[hang][cot]->layTrangThaiQuat() ? "ON" : "OFF");
 
         xPos += 70;
-        // Hiển thị trạng thái đèn
+        // Hiá»ƒn thá»‹ tráº¡ng thÃ¡i Ä‘Ã¨n
         tft.fillRoundRect(xPos, yPos, 60, 15, 3,
                           luongCay[hang][cot]->layTrangThaiDen() ? TFT_GREEN : TFT_RED);
         tft.setCursor(xPos + 5, yPos + 3);
-        tft.print("ĐÈN: ");
+        tft.print("DEN: ");
         tft.print(luongCay[hang][cot]->layTrangThaiDen() ? "ON" : "OFF");
     }
     else
@@ -836,16 +829,16 @@ void HienThi::veManHinhDieuKhien()
         tft.setTextColor(TFT_GRAY);
         tft.setTextSize(2);
         tft.setCursor(80, 120);
-        tft.println("KHÔNG CÓ CÂY");
+        tft.println("KHONG CO CAY");
     }
 
-    // Các nút điều khiển
+    // CÃ¡c nÃºt Ä‘iá»u khiá»ƒn
     tft.setTextColor(TFT_WHITE);
     tft.setTextSize(2);
     tft.setCursor(20, 200);
-    tft.println("Điều khiển thiết bị:");
+    tft.println("Dieu khien thiet bi:");
 
-    // Vẽ các nút điều khiển với vị trí mới
+    // Váº½ cÃ¡c nÃºt Ä‘iá»u khiá»ƒn vá»›i vá»‹ trÃ­ má»›i
     nutBom.y = 220;
     nutQuat.y = 220;
     nutDen.y = 220;
@@ -857,24 +850,24 @@ void HienThi::veManHinhDieuKhien()
     veNut(nutChonCay);
     veNut(nutQuayLai);
 
-    // Hướng dẫn sử dụng
+    // HÆ°á»›ng dáº«n sá»­ dá»¥ng
     tft.setTextColor(TFT_LIGHTBLUE);
     tft.setTextSize(2);
     tft.setCursor(10, 290);
-    tft.println("Chạm nút để bật/tắt thiết bị");
+    tft.println("Bat/tat thiet bi");
 }
 
-// VẼ CÁC BIỂU TƯỢNG CẢM BIẾN
+// Váº¼ CÃC BIá»‚U TÆ¯á»¢NG Cáº¢M BIáº¾N
 void HienThi::veBieuTuongDoAm(int x, int y)
 {
-    // Vẽ biểu tượng giọt nước
+    // Váº½ biá»ƒu tÆ°á»£ng giá»t nÆ°á»›c
     tft.fillCircle(x + 8, y + 10, 5, TFT_BLUE);
     tft.fillTriangle(x + 8, y + 2, x + 3, y + 10, x + 13, y + 10, TFT_BLUE);
 }
 
 void HienThi::veBieuTuongNhietDo(int x, int y)
 {
-    // Vẽ biểu tượng nhiệt kế
+    // Váº½ biá»ƒu tÆ°á»£ng nhiá»‡t káº¿
     tft.drawRoundRect(x + 4, y, 6, 14, 3, TFT_RED);
     tft.fillCircle(x + 7, y + 16, 3, TFT_RED);
     tft.drawFastVLine(x + 7, y + 2, 10, TFT_RED);
@@ -882,9 +875,9 @@ void HienThi::veBieuTuongNhietDo(int x, int y)
 
 void HienThi::veBieuTuongAnhSang(int x, int y)
 {
-    // Vẽ biểu tượng mặt trời
+    // Váº½ biá»ƒu tÆ°á»£ng máº·t trá»i
     tft.fillCircle(x + 8, y + 8, 5, TFT_YELLOW);
-    // Các tia sáng
+    // CÃ¡c tia sÃ¡ng
     for (int i = 0; i < 8; i++)
     {
         float angle = i * 45 * PI / 180;
@@ -896,23 +889,23 @@ void HienThi::veBieuTuongAnhSang(int x, int y)
     }
 }
 
-// VẼ NÚT VỚI HIỆU ỨNG
+// Váº¼ NÃšT Vá»šI HIá»†U á»¨NG
 void HienThi::veNut(ThongTinNut nut)
 {
-    // Vẽ nền và viền nút
+    // Váº½ ná»n vÃ  viá»n nÃºt
     tft.fillRoundRect(nut.x, nut.y, nut.chieuRong, nut.chieuCao, 5, TFT_CYAN);
     tft.drawRoundRect(nut.x, nut.y, nut.chieuRong, nut.chieuCao, 5, TFT_BLUE);
 
-    // Giảm kích thước chữ để tránh tràn
-    tft.setTextSize(1); // Nhỏ hơn, gọn hơn
+    // Giáº£m kÃ­ch thÆ°á»›c chá»¯ Ä‘á»ƒ trÃ¡nh trÃ n
+    tft.setTextSize(1); // Nhá» hÆ¡n, gá»n hÆ¡n
     tft.setTextColor(TFT_BLACK);
 
-    // Tính chiều rộng/chiều cao chữ
-    int charWidth = 6;  // Mỗi ký tự ~6px ở size 1
-    int charHeight = 8; // Chiều cao ở size 1
+    // TÃ­nh chiá»u rá»™ng/chiá»u cao chá»¯
+    int charWidth = 6;  // Má»—i kÃ½ tá»± ~6px á»Ÿ size 1
+    int charHeight = 8; // Chiá»u cao á»Ÿ size 1
     int textWidth = nut.nhan.length() * charWidth;
 
-    // Căn giữa chữ
+    // CÄƒn giá»¯a chá»¯
     int textX = nut.x + (nut.chieuRong - textWidth) / 2;
     int textY = nut.y + (nut.chieuCao - charHeight) / 2;
 
@@ -920,7 +913,7 @@ void HienThi::veNut(ThongTinNut nut)
     tft.print(nut.nhan);
 }
 
-// KIỂM TRA NÚT ĐƯỢC NHẤN
+// KIá»‚M TRA NÃšT ÄÆ¯á»¢C NHáº¤N
 bool HienThi::kiemTraNut(ThongTinNut nut, int x, int y)
 {
     if (x >= nut.x && x <= nut.x + nut.chieuRong &&
@@ -932,16 +925,16 @@ bool HienThi::kiemTraNut(ThongTinNut nut, int x, int y)
     return false;
 }
 
-// THÔNG BÁO CẢNH BÁO
+// THÃ”NG BÃO Cáº¢NH BÃO
 void HienThi::thongBaoCanhBao(const String &thongDiep)
 {
     int popupW = 200;
     int popupH = 60;
     int popupX = (tft.width() - popupW) / 2;
     int popupY = 80;
-    int maxPixel = popupW - 20; // Padding trái/phải
+    int maxPixel = popupW - 20; // Padding trÃ¡i/pháº£i
 
-    // Shadow + nền
+    // Shadow + ná»n
     tft.fillRoundRect(popupX + 3, popupY + 3, popupW, popupH, 8, TFT_DARKGREY);
     tft.fillRoundRect(popupX, popupY, popupW, popupH, 8, TFT_ORANGE);
     tft.drawRoundRect(popupX, popupY, popupW, popupH, 8, TFT_RED);
@@ -949,7 +942,7 @@ void HienThi::thongBaoCanhBao(const String &thongDiep)
     tft.setTextSize(2);
     tft.setTextColor(TFT_BLACK);
 
-    // Tách chuỗi thành từ
+    // TÃ¡ch chuá»—i thÃ nh tá»«
     std::vector<String> tu;
     int start = 0;
     for (int i = 0; i <= thongDiep.length(); i++)
@@ -964,11 +957,11 @@ void HienThi::thongBaoCanhBao(const String &thongDiep)
     String dong1 = "", dong2 = "";
     int width1 = 0, width2 = 0;
 
-    // Gộp từ vào dòng 1
+    // Gá»™p tá»« vÃ o dÃ²ng 1
     for (size_t i = 0; i < tu.size(); i++)
     {
         String word = tu[i];
-        int w = word.length() * 12 + (dong1 == "" ? 0 : 12); // Khoảng trắng
+        int w = word.length() * 12 + (dong1 == "" ? 0 : 12); // Khoáº£ng tráº¯ng
 
         if (width1 + w <= maxPixel)
         {
@@ -982,17 +975,17 @@ void HienThi::thongBaoCanhBao(const String &thongDiep)
         }
         else
         {
-            dong2 += "..."; // Nếu quá dài thì rút gọn
+            dong2 += "..."; // Náº¿u quÃ¡ dÃ i thÃ¬ rÃºt gá»n
             break;
         }
     }
 
-    // Hiển thị dòng 1
+    // Hiá»ƒn thá»‹ dÃ²ng 1
     int textX1 = popupX + (popupW - dong1.length() * 12) / 2;
     tft.setCursor(textX1, popupY + 15);
     tft.print(dong1);
 
-    // Hiển thị dòng 2 nếu có
+    // Hiá»ƒn thá»‹ dÃ²ng 2 náº¿u cÃ³
     if (dong2.length() > 0)
     {
         int textX2 = popupX + (popupW - dong2.length() * 12) / 2;
@@ -1008,44 +1001,44 @@ void HienThi::chuyenDoiCheDoAutoManual()
 {
     cheDoHienTai = (cheDoHienTai == CHE_DO_AUTO) ? CHE_DO_MANUAL : CHE_DO_AUTO;
 
-    String thongBao = "Chuyển sang chế độ ";
-    thongBao += (cheDoHienTai == CHE_DO_AUTO) ? "TỰ ĐỘNG" : "THỦ CÔNG";
+    String thongBao = "Chuyen sang che do ";
+    thongBao += (cheDoHienTai == CHE_DO_AUTO) ? "TU DONG" : "THU CONG";
     thongBaoCanhBao(thongBao);
 
-    // Gửi currentMode lên Firebase nếu đã có fbdo
+    // Gá»­i currentMode lÃªn Firebase náº¿u Ä‘Ã£ cÃ³ fbdo
     if (fbdoPtr != nullptr && Firebase.ready())
     {
         String modeStr = (cheDoHienTai == CHE_DO_AUTO) ? "auto" : "manual";
         if (!Firebase.RTDB.setString(fbdoPtr, "currentMode", modeStr))
         {
-            Serial.print("Lỗi gửi chế độ lên Firebase: ");
+            Serial.print("Loi gui mode len Firebase: ");
             Serial.println(fbdoPtr->errorReason());
         }
         else
         {
-            Serial.print("Đã cập nhật chế độ lên Firebase: ");
+            Serial.print("Cap nhat mode thanh cong: ");
             Serial.println(modeStr);
         }
     }
 }
 
-// TRỒNG CÂY TẠI VỊ TRÍ
+// TRá»’NG CÃ‚Y Táº I Vá»Š TRÃ
 void HienThi::trongCayTaiViTri(int hang, int cot, int loaiCay)
 {
     if (hang >= 0 && hang < soHang && cot >= 0 && cot < soCot)
     {
-        // Xóa cây cũ nếu có
+        // XÃ³a cÃ¢y cÅ© náº¿u cÃ³
         if (luongCay[hang][cot] != nullptr)
         {
             delete luongCay[hang][cot];
         }
 
-        // Tạo cảm biến cho vị trí tương ứng
-        CamBien camDoAm(chanDatAm[hang][cot], 1, 0, 100, 0, 4095);
-        CamBien camAnhSang(chanAnhSang[hang][cot], 1, 0, 0, 10000, 4095);
+        // Táº¡o cáº£m biáº¿n cho vá»‹ trÃ­ tÆ°Æ¡ng á»©ng
+        CamBien camDoAm(chanDatAm[hang][cot], 1, 0, 75, 0, 4095);
+        CamBien camAnhSang(chanAnhSang[hang][cot], 1, 0, 40000, 4095, 0);
         CamBien camNhiet(chanDHT[hang][cot], 2);
 
-        // Tạo hệ thống vườn mới với cảm biến
+        // Táº¡o há»‡ thá»‘ng vÆ°á»n má»›i vá»›i cáº£m biáº¿n
         HeThongVuon *cayMoi = new HeThongVuon(
             *mcpPtr,
             camNhiet,
@@ -1060,33 +1053,33 @@ void HienThi::trongCayTaiViTri(int hang, int cot, int loaiCay)
         cayMoi->datTrangThaiDen(false);
         cayMoi->datTrangThaiQuat(false);
 
-        // Thiết lập loại cây
+        // Thiáº¿t láº­p loáº¡i cÃ¢y
         CauHinhCay cauHinh = CauHinhCay::layCauHinhMacDinh(static_cast<LoaiCay>(loaiCay));
         cayMoi->thietLapCauHinhCay(cauHinh);
 
-        // Gán hệ thống vào luống
+        // GÃ¡n há»‡ thá»‘ng vÃ o luá»‘ng
         thietLapLuongCay(hang, cot, cayMoi);
 
-        // Hiển thị thông báo
-        String thongBao = "Trồng ";
+        // Hiá»ƒn thá»‹ thÃ´ng bÃ¡o
+        String thongBao = "Trong ";
         thongBao += nutChonLoaiCay[loaiCay].nhan;
-        thongBao += " tại [" + String(hang) + "][" + String(cot) + "]";
+        thongBao += " tai [" + String(hang) + "][" + String(cot) + "]";
         thongBaoCanhBao(thongBao);
 
-        // Về giao diện chính
+        // Vá» giao diá»‡n chÃ­nh
         trangThaiHienThi = 0;
         veGiaoDien();
     }
 }
 
-// CẬP NHẬT DỮ LIỆU TỪ CẢM BIẾN
+// Cáº¬P NHáº¬T Dá»® LIá»†U Tá»ª Cáº¢M BIáº¾N
 void HienThi::capNhatDuLieuCamBien(int hang, int cot, float doAmDat, float nhietDo, float anhSang)
 {
     if (hang >= 0 && hang < soHang && cot >= 0 && cot < soCot && luongCay[hang][cot] != nullptr)
     {
         luongCay[hang][cot]->capNhatDuLieuCamBien(doAmDat, nhietDo, anhSang);
 
-        // Chỉ cập nhật giao diện nếu đang hiển thị luống này
+        // Chá»‰ cáº­p nháº­t giao diá»‡n náº¿u Ä‘ang hiá»ƒn thá»‹ luá»‘ng nÃ y
         if (hang == luongDangChon[0] && cot == luongDangChon[1] && trangThaiHienThi == 0)
         {
             veGiaoDien();
@@ -1094,7 +1087,7 @@ void HienThi::capNhatDuLieuCamBien(int hang, int cot, float doAmDat, float nhiet
     }
 }
 
-// XỬ LÝ LOGIC TỰ ĐỘNG
+// Xá»¬ LÃ LOGIC Tá»° Äá»˜NG
 void HienThi::xuLyLogicTuDong()
 {
     if (cheDoHienTai == CHE_DO_AUTO)
@@ -1112,7 +1105,7 @@ void HienThi::xuLyLogicTuDong()
     }
 }
 
-// LẤY TRẠNG THÁI HỆ THỐNG
+// Láº¤Y TRáº NG THÃI Há»† THá»NG
 int HienThi::layTrangThaiHienThi() const
 {
     return trangThaiHienThi;
@@ -1128,7 +1121,7 @@ void HienThi::datCheDoHienTai(CheDoBoSung cheDo)
     cheDoHienTai = cheDo;
 }
 
-// LẤY THÔNG TIN LUỐNG ĐANG CHỌN
+// Láº¤Y THÃ”NG TIN LUá»NG ÄANG CHá»ŒN
 void HienThi::layLuongDangChon(int &hang, int &cot) const
 {
     hang = luongDangChon[0];
@@ -1144,23 +1137,23 @@ void HienThi::datLuongDangChon(int hang, int cot)
     }
 }
 
-// THIẾT LẬP LUỐNG CÂY
+// THIáº¾T Láº¬P LUá»NG CÃ‚Y
 void HienThi::thietLapLuongCay(int hang, int cot, HeThongVuon *heThong)
 {
     if (hang >= 0 && hang < soHang && cot >= 0 && cot < soCot)
     {
-        // Xóa hệ thống cũ nếu có
+        // XÃ³a há»‡ thá»‘ng cÅ© náº¿u cÃ³
         if (luongCay[hang][cot] != nullptr)
         {
             delete luongCay[hang][cot];
         }
 
-        // Gán hệ thống mới
+        // GÃ¡n há»‡ thá»‘ng má»›i
         luongCay[hang][cot] = heThong;
     }
 }
 
-// CẬP NHẬT HIỂN THỊ - HÀM CHÍNH CẬP NHẬT
+// Cáº¬P NHáº¬T HIá»‚N THá»Š - HÃ€M CHÃNH Cáº¬P NHáº¬T
 void HienThi::capNhatHienThi()
 {
     capNhatTrangThaiNut();
@@ -1211,7 +1204,7 @@ void HienThi::capNhatHienThi()
     }
 }
 
-// PHƯƠNG THỨC LẤY HỆ THỐNG VƯỜN TẠI VỊ TRÍ
+// PHÆ¯Æ NG THá»¨C Láº¤Y Há»† THá»NG VÆ¯á»œN Táº I Vá»Š TRÃ
 HeThongVuon *HienThi::layHeThongVuon(int hang, int cot)
 {
     if (hang >= 0 && hang < soHang && cot >= 0 && cot < soCot)
@@ -1221,7 +1214,7 @@ HeThongVuon *HienThi::layHeThongVuon(int hang, int cot)
     return nullptr;
 }
 
-// PHƯƠNG THỨC XÓA CÂY TẠI VỊ TRÍ
+// PHÆ¯Æ NG THá»¨C XÃ“A CÃ‚Y Táº I Vá»Š TRÃ
 void HienThi::xoaCayTaiViTri(int hang, int cot)
 {
     if (hang >= 0 && hang < soHang && cot >= 0 && cot < soCot)
@@ -1231,7 +1224,7 @@ void HienThi::xoaCayTaiViTri(int hang, int cot)
             delete luongCay[hang][cot];
             luongCay[hang][cot] = nullptr;
 
-            String thongBao = "Đã xóa cây tại [";
+            String thongBao = "Da xoa cay tai: [";
             thongBao += hang;
             thongBao += "][";
             thongBao += cot;
@@ -1241,10 +1234,10 @@ void HienThi::xoaCayTaiViTri(int hang, int cot)
     }
 }
 
-// PHƯƠNG THỨC KHỞI TẠO LẠI HỆ THỐNG
+// PHÆ¯Æ NG THá»¨C KHá»žI Táº O Láº I Há»† THá»NG
 void HienThi::khoiTaoLaiHeThong()
 {
-    // Xóa tất cả cây hiện có
+    // XÃ³a táº¥t cáº£ cÃ¢y hiá»‡n cÃ³
     for (int i = 0; i < soHang; i++)
     {
         for (int j = 0; j < soCot; j++)
@@ -1257,14 +1250,19 @@ void HienThi::khoiTaoLaiHeThong()
         }
     }
 
-    // Reset về trạng thái ban đầu
+    // Reset vá» tráº¡ng thÃ¡i ban Ä‘áº§u
     trangThaiHienThi = 0;
     cheDoHienTai = CHE_DO_AUTO;
     luongDangChon[0] = 0;
     luongDangChon[1] = 0;
 
-    // Vẽ lại giao diện
+    // Váº½ láº¡i giao diá»‡n
     veGiaoDien();
 
-    thongBaoCanhBao("Hệ thống đã được khởi tạo lại!");
+    thongBaoCanhBao("He thong da duoc tao lai!");
+}
+void HienThi::ganFirebase(FirebaseData *fbdo, const String &id)
+{
+    fbdoPtr = fbdo;
+    gardenId = id;
 }

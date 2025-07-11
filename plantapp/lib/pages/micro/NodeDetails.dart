@@ -58,6 +58,7 @@ class _NodeDetailsState extends State<NodeDetails> {
   int motorpump = 0;
   int motorlight = 0;
   int motorfan = 0;
+  String currentMode = "auto"; // trạng thái hệ thống
 
   motorSwitch(int valueStateOfMayBom) async {
     setState(() {
@@ -92,43 +93,37 @@ class _NodeDetailsState extends State<NodeDetails> {
   String temperatureCondition = "Loading...";
   String soilMoistureCondition = "Loading...";
   Color temperatureColor = Colors.grey;
-  Color soilMoistureColor = Colors.grey;
+  Color soilMoistureColor = Colors.green;
 
   void _setupListeners() {
-    Query _tempRef = FirebaseDatabase.instance
-        .ref()
-        .child("${selectedPlant.potId}/dhtNhietDo");
+    final potPath = selectedPlant.potId;
 
-    Query _humidityRef =
-        FirebaseDatabase.instance.ref().child("${selectedPlant.potId}/dhtDoAm");
-
-    Query _lightRef =
-        FirebaseDatabase.instance.ref().child("${selectedPlant.potId}/anhSang");
-
-    // Listen for changes in humidity
-    _humidityRef.onValue.listen((event) {
-      setState(() {
-        final rawData = event.snapshot.value
-            .toString(); // Example: "{current: 32.9, min: 30.0, max: 80.0}"
-        final parsedValue = double.tryParse(
-            rawData.replaceAll(RegExp(r'[^\d.]'), '')); // Extracts: "32.9"
-        sensedhumidity = parsedValue?.toStringAsFixed(1) ?? ""; // Safely assign
-      });
+    FirebaseDatabase.instance.ref('currentMode').onValue.listen((event) {
+      final value = event.snapshot.value;
+      if (value != null) {
+        setState(() {
+          currentMode = value.toString();
+        });
+      }
     });
 
-    // Listen for changes in temperature
-    _tempRef.onValue.listen((event) {
+    // Temperature
+    FirebaseDatabase.instance
+        .ref('$potPath/dhtNhietDo')
+        .onValue
+        .listen((event) {
+      final rawData = event.snapshot.value.toString();
+      final parsedValue =
+          double.tryParse(rawData.replaceAll(RegExp(r'[^\d.]'), ''));
       setState(() {
-        final rawData =
-            event.snapshot.value.toString(); // Example: "{current: 29.2}"
-        final parsedValue = double.tryParse(
-            rawData.replaceAll(RegExp(r'[^\d.]'), '')); // Extracts: "29.2"
-        sensedtemp = parsedValue?.toStringAsFixed(1) ?? ""; // Safely assign
-
+        sensedtemp = parsedValue?.toStringAsFixed(1) ?? "";
         if (parsedValue != null) {
-          if (parsedValue < selectedPlant.nguongNhietDo) {
+          if (parsedValue < selectedPlant.nguongNhietDo - 3) {
             temperatureCondition = "Temperature too low";
             temperatureColor = Colors.blue;
+          } else if (parsedValue > selectedPlant.nguongNhietDo + 3) {
+            temperatureCondition = "Temperature too low";
+            temperatureColor = Colors.red;
           } else {
             temperatureCondition = "Suitable temperature for growing";
             temperatureColor = Colors.green;
@@ -137,15 +132,62 @@ class _NodeDetailsState extends State<NodeDetails> {
       });
     });
 
-    // Listen for changes in light intensity
-    _lightRef.onValue.listen((event) {
+    // Humidity
+    FirebaseDatabase.instance.ref('$potPath/dhtDoAm').onValue.listen((event) {
+      final rawData = event.snapshot.value.toString();
+      final parsedValue =
+          double.tryParse(rawData.replaceAll(RegExp(r'[^\d.]'), ''));
       setState(() {
-        final rawData =
-            event.snapshot.value.toString(); // Example: "{current: 29.2}"
-        final parsedValue = double.tryParse(
-            rawData.replaceAll(RegExp(r'[^\d.]'), '')); // Extracts: "29.2"
-        sensedlight = parsedValue?.toStringAsFixed(1) ?? ""; // Safely assign
+        sensedhumidity = parsedValue?.toStringAsFixed(1) ?? "";
       });
+    });
+
+    // Light intensity
+    FirebaseDatabase.instance.ref('$potPath/anhSang').onValue.listen((event) {
+      final rawData = event.snapshot.value.toString();
+      final parsedValue =
+          double.tryParse(rawData.replaceAll(RegExp(r'[^\d.]'), ''));
+      setState(() {
+        sensedlight = parsedValue?.toStringAsFixed(1) ?? "";
+      });
+    });
+
+    // Device states
+    FirebaseDatabase.instance.ref('$potPath/mayBom').onValue.listen((event) {
+      final value = event.snapshot.value;
+      if (value != null) {
+        setState(() {
+          motorpump = value as int;
+        });
+      }
+    });
+
+    FirebaseDatabase.instance.ref('$potPath/quat').onValue.listen((event) {
+      final value = event.snapshot.value;
+      if (value != null) {
+        setState(() {
+          motorfan = value as int;
+        });
+      }
+    });
+
+    FirebaseDatabase.instance.ref('$potPath/den').onValue.listen((event) {
+      final value = event.snapshot.value;
+      if (value != null) {
+        setState(() {
+          motorlight = value as int;
+        });
+      }
+    });
+
+    // 🌐 System mode (toàn vườn)
+    FirebaseDatabase.instance.ref('currentMode').onValue.listen((event) {
+      final value = event.snapshot.value;
+      if (value != null) {
+        setState(() {
+          currentMode = value.toString(); // "auto" hoặc "manual"
+        });
+      }
     });
   }
 
@@ -206,6 +248,7 @@ class _NodeDetailsState extends State<NodeDetails> {
                         fontWeight: FontWeight.w600,
                         fontSize: 18),
                   ),
+                  const SizedBox(height: 5),
                 ],
               ),
             ),
@@ -271,32 +314,7 @@ class _NodeDetailsState extends State<NodeDetails> {
                   ),
                 )),
             const SizedBox(height: 10),
-            // ElevatedButton(
-            //     onPressed: () {
-            //       Navigator.push(
-            //         context,
-            //         MaterialPageRoute(
-            //           builder: (context) =>
-            //               const PlantIdentifyPage(), // Điều hướng đến trang mới
-            //         ),
-            //       );
-            //     },
-            //     style: ElevatedButton.styleFrom(
-            //       shape: RoundedRectangleBorder(
-            //         borderRadius: BorderRadius.circular(5.0),
-            //       ),
-            //       backgroundColor: const Color.fromRGBO(74, 173, 82, 1),
-            //     ),
-            //     child: Text(
-            //       "Plant Indentification", // Tiêu đề của nút mới
-            //       style: GoogleFonts.poppins(
-            //         height: 1,
-            //         color: Colors.white,
-            //         fontWeight: FontWeight.normal,
-            //         fontSize: 17,
-            //       ),
-            //     )),
-            // const SizedBox(height: 40),
+
             SmartPlanting(
               motorSwitch: motorSwitch,
               fanSwitch: fanSwitch,
@@ -308,6 +326,7 @@ class _NodeDetailsState extends State<NodeDetails> {
                   motorfan, // Provide an appropriate value or variable here
               selectedPlant: selectedPlant,
               onSoilMoistureChange: handleSoilMoistureChange,
+              currentMode: currentMode,
             )
           ],
         ),
@@ -319,26 +338,26 @@ class _NodeDetailsState extends State<NodeDetails> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 15.0),
+          padding: const EdgeInsets.symmetric(horizontal: 20.0),
           child: Column(
             children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: temperatureColor,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  temperatureCondition,
-                  style: GoogleFonts.poppins(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              const SizedBox(height: 10),
+              // Container(
+              //   padding: const EdgeInsets.all(10),
+              //   decoration: BoxDecoration(
+              //     color: temperatureColor,
+              //     borderRadius: BorderRadius.circular(10),
+              //   ),
+              //   child: Text(
+              //     temperatureCondition,
+              //     style: GoogleFonts.poppins(
+              //       fontSize: 16,
+              //       fontWeight: FontWeight.w600,
+              //       color: Colors.white,
+              //     ),
+              //     textAlign: TextAlign.center,
+              //   ),
+              // ),
+              const SizedBox(height: 20),
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
@@ -346,7 +365,7 @@ class _NodeDetailsState extends State<NodeDetails> {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
-                  soilMoistureCondition,
+                  "Environmental Parameters",
                   style: GoogleFonts.poppins(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -358,14 +377,14 @@ class _NodeDetailsState extends State<NodeDetails> {
             ],
           ),
         ),
-        const SizedBox(height: 10),
+        // const SizedBox(height: 20),
         GridView.count(
           crossAxisCount: 2,
           childAspectRatio: 2,
           shrinkWrap: true,
           padding: const EdgeInsets.symmetric(
-            horizontal: 15,
-            vertical: 10,
+            horizontal: 25,
+            vertical: 12,
           ),
           physics: const NeverScrollableScrollPhysics(),
           children: [

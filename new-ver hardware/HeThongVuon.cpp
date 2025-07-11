@@ -1,35 +1,20 @@
 #include "HeThongVuon.h"
-#include <Firebase_ESP_Client.h>
 
-private:
-FirebaseData *fbdoPtr = nullptr; // con trỏ tới FirebaseData
-
-public:
-void ganFirebase(FirebaseData *fbdo); // khai báo hàm gán fbdo
-// Constructor
-HeThongVuon::HeThongVuon(const CamBien &camNhiet,
+HeThongVuon::HeThongVuon(Adafruit_MCP23X17 &mcp,
+                         const CamBien &camNhiet,
                          const CamBien &camDoAm,
                          const CamBien &camAnhSang,
-                         const ThietBi &bom,
-                         const ThietBi &den,
-                         const ThietBi &quat)
+                         int chanBom, int chanDen, int chanQuat)
     : _camBienDoAm(camDoAm),
       _camBienAnhSang(camAnhSang),
       _camBienNhietDo(camNhiet),
-      _bom(bom),
-      _den(den),
-      _quat(quat),
+      _bom(ThietBi(mcp, chanBom)),
+      _den(ThietBi(mcp, chanDen)),
+      _quat(ThietBi(mcp, chanQuat)),
       _dht(camNhiet.layChan(), DHT11),
       _cheDoTuDong(true),
-      _fbdoPtr(nullptr),
-      _gardenPath("gardenId1") // mặc định
+      _fbdoPtr(nullptr)
 {
-}
-
-void HeThongVuon::ganFirebase(FirebaseData *fbdo, const String &gardenIdPath)
-{
-    _fbdoPtr = fbdo;
-    _gardenPath = gardenIdPath;
 }
 
 void HeThongVuon::batDau()
@@ -45,86 +30,84 @@ void HeThongVuon::batDau()
 
 void HeThongVuon::capNhat()
 {
+    // CHỈ xử lý khi ở chế độ tự động
     if (!_cheDoTuDong)
+    {
         return;
+    }
+
+    // Đọc dữ liệu cảm biến
+    docDuLieuCamBien();
+
+    // Xử lý logic chăm sóc tự động
     xuLyLogicChamSoc();
+}
+
+void HeThongVuon::docDuLieuCamBien()
+{
+    // Đọc dữ liệu từ cảm biến (có thể gọi bất kể chế độ nào)
+    _nhietDo = _camBienNhietDo.layGiaTri(_dht);
+    _doAmDat = _camBienDoAm.layGiaTri(_dht);
+    _anhSang = _camBienAnhSang.layGiaTri(_dht);
 }
 
 void HeThongVuon::xuLyLogicChamSoc()
 {
-    float doAmDat = layDoAmDat();
-    float anhSang = layAnhSang();
-    float nhietDo = layNhietDo();
+    // CHỈ xử lý logic khi ở chế độ tự động
+    if (!_cheDoTuDong)
+    {
+        return;
+    }
 
-    if (doAmDat < _cauHinhCay.layNguongDoAmDat())
+    if (_doAmDat < _cauHinhCay.layNguongDoAmDat())
         batBom();
     else
         tatBom();
-    if (anhSang < _cauHinhCay.layNguongAnhSang())
+
+    if (_anhSang < _cauHinhCay.layNguongAnhSang())
         batDen();
     else
         tatDen();
-    if (nhietDo > _cauHinhCay.layNguongNhietDo())
+
+    if (_nhietDo > _cauHinhCay.layNguongNhietDo())
         batQuat();
     else
         tatQuat();
 }
 
-// --- Cảm biến ---
-float HeThongVuon::layDoAmDat()
-{
-    return _camBienDoAm.layGiaTri(_dht);
-}
+float HeThongVuon::layDoAmDat() { return _doAmDat; }
+float HeThongVuon::layAnhSang() { return _anhSang; }
+float HeThongVuon::layNhietDo() { return _nhietDo; }
 
-float HeThongVuon::layAnhSang()
-{
-    return _camBienAnhSang.layGiaTri(_dht);
-}
-
-float HeThongVuon::layNhietDo()
-{
-    return _camBienNhietDo.layGiaTri(_dht);
-}
-
-// --- Thiết bị ---
 void HeThongVuon::batBom()
 {
     _bom.bat();
-    capNhatFirebase("mayBom", 1);
 }
 void HeThongVuon::tatBom()
 {
     _bom.tat();
-    capNhatFirebase("mayBom", 0);
 }
-
 void HeThongVuon::batDen()
 {
     _den.bat();
-    capNhatFirebase("den", 1);
 }
 void HeThongVuon::tatDen()
 {
     _den.tat();
-    capNhatFirebase("den", 0);
 }
-
 void HeThongVuon::batQuat()
 {
     _quat.bat();
-    capNhatFirebase("quat", 1);
 }
 void HeThongVuon::tatQuat()
 {
     _quat.tat();
-    capNhatFirebase("quat", 0);
 }
 
 bool HeThongVuon::layTrangThaiBom() { return _bom.layTrangThai(); }
 bool HeThongVuon::layTrangThaiDen() { return _den.layTrangThai(); }
 bool HeThongVuon::layTrangThaiQuat() { return _quat.layTrangThai(); }
 
-// --- Cấu hình ---
 void HeThongVuon::thietLapCauHinhCay(CauHinhCay cauHinh)
 {
     _cauHinhCay = cauHinh;
@@ -134,11 +117,20 @@ CauHinhCay HeThongVuon::layCauHinhCay()
     return _cauHinhCay;
 }
 
-// --- Chế độ ---
 void HeThongVuon::chuyenCheDo(bool tuDong)
 {
+    if (!tuDong && _cheDoTuDong)
+    {
+        // Khi chuyển từ tự động sang thủ công thì tắt hết thiết bị
+        tatBom();
+        tatDen();
+        tatQuat();
+        Serial.println("Chuyển sang chế độ thủ công - Tắt tất cả thiết bị");
+    }
     _cheDoTuDong = tuDong;
+    Serial.printf("Chế độ hiện tại: %s\n", _cheDoTuDong ? "TỰ ĐỘNG" : "THỦ CÔNG");
 }
+
 bool HeThongVuon::laCheDoTuDong()
 {
     return _cheDoTuDong;
@@ -146,36 +138,70 @@ bool HeThongVuon::laCheDoTuDong()
 
 void HeThongVuon::datTrangThaiBom(bool trangThai)
 {
-    if (trangThai)
-        batBom();
+    // CHỈ cho phép điều khiển thủ công khi ở chế độ thủ công
+    if (!_cheDoTuDong)
+    {
+        if (trangThai)
+        {
+            _bom.bat();
+        }
+        else
+        {
+            _bom.tat();
+        }
+        Serial.printf("Điều khiển thủ công - Bơm: %s\n", trangThai ? "BẬT" : "TẮT");
+    }
     else
-        tatBom();
+    {
+        Serial.println("Không thể điều khiển thủ công trong chế độ tự động!");
+    }
 }
+
 void HeThongVuon::datTrangThaiQuat(bool trangThai)
 {
-    if (trangThai)
-        batQuat();
+    // CHỈ cho phép điều khiển thủ công khi ở chế độ thủ công
+    if (!_cheDoTuDong)
+    {
+        if (trangThai)
+        {
+            _quat.bat();
+        }
+        else
+        {
+            _quat.tat();
+        }
+        Serial.printf("Điều khiển thủ công - Quạt: %s\n", trangThai ? "BẬT" : "TẮT");
+    }
     else
-        tatQuat();
+    {
+        Serial.println("Không thể điều khiển thủ công trong chế độ tự động!");
+    }
 }
+
 void HeThongVuon::datTrangThaiDen(bool trangThai)
 {
-    if (trangThai)
-        batDen();
+    // CHỈ cho phép điều khiển thủ công khi ở chế độ thủ công
+    if (!_cheDoTuDong)
+    {
+        if (trangThai)
+        {
+            _den.bat();
+        }
+        else
+        {
+            _den.tat();
+        }
+        Serial.printf("Điều khiển thủ công - Đèn: %s\n", trangThai ? "BẬT" : "TẮT");
+    }
     else
-        tatDen();
+    {
+        Serial.println("Không thể điều khiển thủ công trong chế độ tự động!");
+    }
 }
 
-// --- Cập nhật cảm biến theo mô phỏng (nếu có) ---
 void HeThongVuon::capNhatDuLieuCamBien(float doAmDat, float nhietDo, float anhSang)
 {
-}
-
-// --- Nội bộ ---
-void HeThongVuon::capNhatFirebase(const String &tenThietBi, int trangThai)
-{
-    if (_fbdoPtr != nullptr && Firebase.ready())
-    {
-        Firebase.RTDB.setInt(_fbdoPtr, _gardenPath + "/" + tenThietBi, trangThai);
-    }
+    _doAmDat = doAmDat;
+    _nhietDo = nhietDo;
+    _anhSang = anhSang;
 }
