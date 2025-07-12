@@ -8,6 +8,8 @@ import 'package:plantapp/pages/news/home_news.dart';
 import 'package:plantapp/pages/user/profile.dart';
 // import 'package:firebase_database/firebase_database.dart';
 import 'package:provider/provider.dart';
+import 'package:plantapp/pages/PlantIndentifyPage.dart';
+
 import '../../userdets.dart';
 // import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -118,145 +120,6 @@ class _HomeState extends State<Home> {
             )
           ]),
           const WeatherContainer(),
-          // Padding(
-          //   padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 8),
-          //   child: Column(
-          //     crossAxisAlignment:
-          //         CrossAxisAlignment.start, // Căn trái cho tiêu đề
-          //     children: [
-          //       GestureDetector(
-          //         onTap: () {
-          //           // Khi người dùng chạm vào widget, chuyển đến trang MacroPage
-          //           Navigator.push(
-          //             context,
-          //             MaterialPageRoute(
-          //                 builder: (context) => const MacroPage()),
-          //           );
-          //         },
-          //         child: Container(
-          //           width: double
-          //               .infinity, // Chiếm toàn bộ chiều rộng của cha chứa
-          //           height: 200, // Chiều cao của bể
-          //           decoration: BoxDecoration(
-          //             borderRadius: BorderRadius.circular(15),
-          //             color: Colors.white,
-          //             boxShadow: [
-          //               BoxShadow(
-          //                 color: Colors.grey.shade300,
-          //                 blurRadius: 10,
-          //                 offset: Offset(0, 2), // Đổ bóng cho phần container
-          //               ),
-          //             ],
-          //           ),
-          //           child: Stack(
-          //             alignment: Alignment
-          //                 .bottomCenter, // Căn chỉnh phần nước ở dưới cùng
-          //             children: [
-          //               // Thành bể
-          //               Container(
-          //                 width: double
-          //                     .infinity, // Chiếm toàn bộ chiều rộng của cha
-          //                 height: double
-          //                     .infinity, // Chiếm toàn bộ chiều cao của cha
-          //                 decoration: BoxDecoration(
-          //                   color: Colors.white,
-          //                   border: Border.all(
-          //                       color: Colors.green,
-          //                       width: 3), // Viền xanh lá cây
-          //                   borderRadius: BorderRadius.circular(20),
-          //                 ),
-          //               ),
-          //               AnimatedContainer(
-          //                 width: double
-          //                     .infinity, // Chiếm toàn bộ chiều rộng của bể
-          //                     height: _gardenData != null
-          //                         ? (200 * (1 - (_gardenData?['khoangCach']?['current'] ?? 0) / tankHeight)).toDouble().clamp(0.0, double.infinity)
-          //                         : 0, // Nếu không có dữ liệu, đặt chiều cao là 0
-          //                 duration: Duration(seconds: 1),
-          //                 decoration: BoxDecoration(
-          //                   color: const Color.fromARGB(255, 110, 169, 218), // Màu nước
-          //                   borderRadius: BorderRadius.circular(20),
-          //                 ),
-          //               ),
-          //               // Thêm Text hiển thị % bên cạnh mức nước
-          //               Positioned(
-          //                 right: 10, // Vị trí Text bên phải bể
-          //                 child: Text(
-          //                   _gardenData != null
-          //                       ? "${((1 - (_gardenData?['khoangCach']?['current'] ?? 0) / tankHeight) * 100).toInt().clamp(0, 100)}%" // Giới hạn phần trăm từ 0 đến 100
-          //                       : "0%", // Nếu không có dữ liệu, hiển thị 0%
-          //                   style: TextStyle(
-          //                     color: Colors.black,
-          //                     fontWeight: FontWeight.bold,
-          //                     fontSize: 14,
-          //                   ),
-          //                 ),
-          //               ),
-          //               // Phần chia % ở bên trái
-          //               Positioned(
-          //                 left: 10,
-          //                 top: 10,
-          //                 bottom: 10,
-          //                 child: Column(
-          //                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          //                   children: [
-          //                     Text(
-          //                       "100%",
-          //                       style: TextStyle(
-          //                         color: Colors.black,
-          //                         fontWeight: FontWeight.bold,
-          //                       ),
-          //                     ),
-          //                     Text(
-          //                       "75%",
-          //                       style: TextStyle(
-          //                         color: Colors.black,
-          //                         fontWeight: FontWeight.bold,
-          //                       ),
-          //                     ),
-          //                     Text(
-          //                       "50%",
-          //                       style: TextStyle(
-          //                         color: Colors.black,
-          //                         fontWeight: FontWeight.bold,
-          //                       ),
-          //                     ),
-          //                     Text(
-          //                       "25%",
-          //                       style: TextStyle(
-          //                         color: Colors.black,
-          //                         fontWeight: FontWeight.bold,
-          //                       ),
-          //                     ),
-          //                     Text(
-          //                       "0%",
-          //                       style: TextStyle(
-          //                         color: Colors.black,
-          //                         fontWeight: FontWeight.bold,
-          //                       ),
-          //                     ),
-          //                   ],
-          //                 ),
-          //               ),
-          //             ],
-          //           ),
-          //         ),
-          //       ),
-          //       // Tiêu đề dưới bể nước
-          //       SizedBox(height: 10), // Khoảng cách giữa bể và tiêu đề
-          //       Center(
-          //         child: Text(
-          //           "Tank Level",
-          //           style: TextStyle(
-          //             fontSize: 16,
-          //             fontWeight: FontWeight.normal,
-          //             color: const Color.fromARGB(255, 0, 0, 0),
-          //           ),
-          //         ),
-          //       )
-          //     ],
-          //   ),
-          // ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 8),
             child: GestureDetector(
@@ -284,6 +147,21 @@ class _HomeState extends State<Home> {
                 child: const ButtonsHome(
                   imgpath: "lib/images/news.jpg",
                   heading: "News",
+                )),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 8),
+            child: GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const PlantIdentifyPage()),
+                  );
+                },
+                child: const ButtonsHome(
+                  imgpath: "lib/images/plant-iden.png",
+                  heading: "Plant Identification",
                 )),
           ),
         ],

@@ -3,7 +3,6 @@ import 'package:plantapp/pages/models/PlantSuggestion.dart';
 
 class PlantSuggestionCard extends StatelessWidget {
   final String name;
-  final String similarImageUrl;
   final String description;
   final String bestLightCondition;
   final String bestSoilType;
@@ -11,7 +10,6 @@ class PlantSuggestionCard extends StatelessWidget {
 
   PlantSuggestionCard(PlantSuggestion suggestion, {super.key})
       : name = suggestion.name,
-        similarImageUrl = suggestion.urlImage,
         description = suggestion.description,
         bestLightCondition = suggestion.bestLightCondition,
         bestSoilType = suggestion.bestSoilType,
@@ -44,12 +42,6 @@ class PlantSuggestionCard extends StatelessWidget {
             borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(15),
               topRight: Radius.circular(15),
-            ),
-            child: Image.network(
-              similarImageUrl,
-              width: double.infinity,
-              height: 200,
-              fit: BoxFit.cover,
             ),
           ),
           const SizedBox(height: 10),

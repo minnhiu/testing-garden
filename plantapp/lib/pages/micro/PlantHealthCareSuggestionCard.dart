@@ -5,7 +5,6 @@ import '../models/PlantHealthCareSuggestion.dart';
 class PlantHealthCareSuggestionCard extends StatelessWidget {
   final String name;
   final int probability;
-  final String similarImageUrl;
   final String description;
   final List<String> treatmentChemical;
   final List<String> treatmentBiological;
@@ -15,7 +14,6 @@ class PlantHealthCareSuggestionCard extends StatelessWidget {
       {super.key})
       : name = suggestion.name,
         probability = suggestion.probability,
-        similarImageUrl = suggestion.urlImage,
         description = suggestion.description,
         treatmentChemical = suggestion.treatmentChemical,
         treatmentBiological = suggestion.treatmentBiological,
@@ -48,12 +46,6 @@ class PlantHealthCareSuggestionCard extends StatelessWidget {
             borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(15),
               topRight: Radius.circular(15),
-            ),
-            child: Image.network(
-              similarImageUrl,
-              width: double.infinity,
-              height: 200,
-              fit: BoxFit.cover,
             ),
           ),
           const SizedBox(height: 10),

@@ -6,6 +6,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:plantapp/pages/models/Plant.dart';
 import 'package:plantapp/pages/micro/smartPlanting.dart';
+
 // import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class NodeDetails extends StatefulWidget {
@@ -313,7 +314,7 @@ class _NodeDetailsState extends State<NodeDetails> {
                     fontSize: 17, // Same font size, or adjust as needed
                   ),
                 )),
-            const SizedBox(height: 10),
+            const SizedBox(height: 30),
 
             SmartPlanting(
               motorSwitch: motorSwitch,

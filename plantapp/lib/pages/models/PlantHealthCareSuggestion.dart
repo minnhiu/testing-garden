@@ -1,7 +1,6 @@
 class PlantHealthCareSuggestion {
   final String name;
   final int probability;
-  final String urlImage;
   final String description;
   final List<String> treatmentChemical;
   final List<String> treatmentBiological;
@@ -10,7 +9,6 @@ class PlantHealthCareSuggestion {
   PlantHealthCareSuggestion({
     required this.name,
     required this.probability,
-    required this.urlImage,
     required this.description,
     required this.treatmentChemical,
     required this.treatmentBiological,
@@ -21,7 +19,6 @@ class PlantHealthCareSuggestion {
     return PlantHealthCareSuggestion(
         name: suggestion['name'],
         probability: (suggestion['probability'] * 100).toInt(),
-        urlImage: suggestion['similar_images'][0]['url'],
         description: suggestion['details']['description'],
         treatmentChemical:
             (suggestion['details']['treatment']['chemical'] ?? [])
