@@ -46,9 +46,11 @@ HienThi manHinh(SO_HANG, SO_COT);
 unsigned long lastSensorUpdate = 0;
 unsigned long lastDisplayUpdate = 0;
 unsigned long lastTouchCheck = 0;
+unsigned long lastModeCheck = 0;
 const unsigned long SENSOR_INTERVAL = 3000;
 const unsigned long DISPLAY_INTERVAL = 1000;
 const unsigned long TOUCH_INTERVAL = 30;
+const unsigned long MODE_CHECK_INTERVAL = 2000;
 
 // ========== Trạng thái cũ ==========
 float nhietDoCu[SO_HANG][SO_COT];
@@ -58,7 +60,7 @@ int bomCu[SO_HANG][SO_COT];
 int denCu[SO_HANG][SO_COT];
 int quatCu[SO_HANG][SO_COT];
 
-// ========== Kết nối WiFi ==========
+// ========== WiFi ==========
 void connectToWiFi()
 {
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
@@ -71,59 +73,7 @@ void connectToWiFi()
   Serial.println("\nWiFi da ket noi");
 }
 
-// ========== STREAM CALLBACK ==========
-void streamCallback(FirebaseStream data)
-{
-  String path = data.dataPath();
-  String value = data.stringData();
-  Serial.printf("[Stream] Thay doi: %s = %s\n", path.c_str(), value.c_str());
-
-  if (path == "/currentMode")
-  {
-    bool newMode = (value == "auto");
-    if (newMode != isAutoMode)
-    {
-      isAutoMode = newMode;
-      manHinh.datCheDoHienTai(isAutoMode ? CHE_DO_AUTO : CHE_DO_MANUAL);
-      Serial.printf("Che do thay doi thanh: %s\n", isAutoMode ? "AUTO" : "MANUAL");
-    }
-    return;
-  }
-
-  for (int i = 0; i < SO_HANG; i++)
-  {
-    for (int j = 0; j < SO_COT; j++)
-    {
-      String gardenId = "/gardenId" + String(i * SO_COT + j + 1);
-      HeThongVuon *cay = manHinh.layHeThongVuon(i, j);
-      if (!cay)
-        continue;
-
-      if (path == gardenId + "/mayBom")
-      {
-        cay->datTrangThaiBom(value == "1");
-      }
-      else if (path == gardenId + "/den")
-      {
-        cay->datTrangThaiDen(value == "1");
-      }
-      else if (path == gardenId + "/quat")
-      {
-        cay->datTrangThaiQuat(value == "1");
-      }
-    }
-  }
-}
-
-void streamTimeoutCallback(bool timeout)
-{
-  if (timeout)
-  {
-    Serial.println("Mat ket noi stream, dang thu lai...");
-  }
-}
-
-// ========== Kết nối Firebase ==========
+// ========== Firebase ==========
 void connectToFirebase()
 {
   config.api_key = API_KEY;
@@ -142,17 +92,9 @@ void connectToFirebase()
     delay(300);
     Serial.print(".");
   }
+
   firebaseReady = Firebase.ready();
   Serial.println(firebaseReady ? "\nFirebase da san sang" : "\nFirebase loi ket noi");
-
-  if (!Firebase.RTDB.beginStream(&fbdo, "/"))
-  {
-    Serial.printf("Loi stream: %s\n", fbdo.errorReason().c_str());
-  }
-  else
-  {
-    Firebase.RTDB.setStreamCallback(&fbdo, streamCallback, streamTimeoutCallback);
-  }
 }
 
 // ========== SETUP ==========
@@ -198,7 +140,24 @@ void loop()
 {
   unsigned long now = millis();
 
-  // 1. Cập nhật dữ liệu cảm biến và gửi lên Firebase
+  // 1. Kiểm tra chế độ hoạt động từ Firebase
+  if (firebaseReady && now - lastModeCheck >= MODE_CHECK_INTERVAL)
+  {
+    lastModeCheck = now;
+    if (Firebase.RTDB.getString(&fbdo, "currentMode"))
+    {
+      String mode = fbdo.stringData();
+      bool newMode = (mode == "auto");
+      if (newMode != isAutoMode)
+      {
+        isAutoMode = newMode;
+        manHinh.datCheDoHienTai(isAutoMode ? CHE_DO_AUTO : CHE_DO_MANUAL);
+        Serial.printf("Che do moi: %s\n", isAutoMode ? "AUTO" : "MANUAL");
+      }
+    }
+  }
+
+  // 2. Cập nhật dữ liệu cảm biến và trạng thái thiết bị
   if (now - lastSensorUpdate >= SENSOR_INTERVAL)
   {
     lastSensorUpdate = now;
@@ -218,9 +177,21 @@ void loop()
         String gardenId = "gardenId" + String(i * SO_COT + j + 1);
 
         if (isAutoMode)
+        {
           cay->capNhat();
+        }
+        else
+        {
+          // Lấy trạng thái từ Firebase khi ở chế độ thủ công
+          if (Firebase.RTDB.getInt(&fbdo, gardenId + "/mayBom"))
+            cay->datTrangThaiBom(fbdo.intData() == 1);
+          if (Firebase.RTDB.getInt(&fbdo, gardenId + "/den"))
+            cay->datTrangThaiDen(fbdo.intData() == 1);
+          if (Firebase.RTDB.getInt(&fbdo, gardenId + "/quat"))
+            cay->datTrangThaiQuat(fbdo.intData() == 1);
+        }
 
-        // Gửi dữ liệu cảm biến luôn
+        // Gửi dữ liệu cảm biến
         if (abs(nhietDo - nhietDoCu[i][j]) > 0.3)
         {
           Firebase.RTDB.setFloat(&fbdo, gardenId + "/dhtNhietDo", nhietDo);
@@ -239,7 +210,7 @@ void loop()
           anhSangCu[i][j] = anhSang;
         }
 
-        // Gửi trạng thái thiết bị CHỈ khi ở chế độ tự động
+        // Gửi trạng thái thiết bị chỉ khi ở chế độ tự động
         if (isAutoMode)
         {
           int bom = cay->layTrangThaiBom() ? 1 : 0;
@@ -271,14 +242,13 @@ void loop()
     }
   }
 
-  // 2. Cập nhật hiển thị
+  // 3. Hiển thị và cảm ứng
   if (now - lastDisplayUpdate >= DISPLAY_INTERVAL)
   {
     lastDisplayUpdate = now;
     manHinh.capNhatHienThi();
   }
 
-  // 3. Cập nhật trạng thái nút
   if (now - lastTouchCheck >= TOUCH_INTERVAL)
   {
     lastTouchCheck = now;
