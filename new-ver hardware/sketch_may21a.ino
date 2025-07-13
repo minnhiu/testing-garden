@@ -10,22 +10,7 @@
 #include "addons/TokenHelper.h"
 #include "addons/RTDBHelper.h"
 
-// Cau hinh MCP23017
-#define MCP_ADDRESS 0x20
-#define MCP_SDA_PIN 21
-#define MCP_SCL_PIN 22
-
-const int SO_HANG = 2;
-const int SO_COT = 2;
-
-const int chanDHT[SO_HANG][SO_COT] = {{32, 33}, {25, 26}};
-const int chanDatAm[SO_HANG][SO_COT] = {{34, 35}, {36, 39}};
-const int chanAnhSang[SO_HANG][SO_COT] = {{27, 14}, {12, 13}};
-const int chanBomNuoc[SO_HANG][SO_COT] = {{0, 1}, {2, 3}};
-const int chanDen[SO_HANG][SO_COT] = {{4, 5}, {6, 7}};
-const int chanQuat[SO_HANG][SO_COT] = {{8, 9}, {10, 11}};
-
-// Cau hinh Firebase
+// ========== Cấu hình WiFi và Firebase ==========
 #define WIFI_SSID "Nga Liem"
 #define WIFI_PASSWORD "tinuanoi"
 #define API_KEY "AIzaSyCa-0haXGQ1j620ppeOm9HV5Ltdw-JeF6g"
@@ -37,22 +22,43 @@ FirebaseData fbdo;
 FirebaseAuth auth;
 FirebaseConfig config;
 bool firebaseReady = false;
+bool isAutoMode = true;
 
-// Man hinh & MCP
+// ========== Cấu hình phần cứng ==========
+#define MCP_ADDRESS 0x20
+#define MCP_SDA_PIN 21
+#define MCP_SCL_PIN 22
+
+const int SO_HANG = 2;
+const int SO_COT = 2;
+
+const int chanAnhSang[SO_HANG][SO_COT] = {{32, 33}, {25, 26}};
+const int chanDatAm[SO_HANG][SO_COT] = {{34, 35}, {36, 39}};
+const int chanDHT[SO_HANG][SO_COT] = {{27, 14}, {12, 13}};
+const int chanBomNuoc[SO_HANG][SO_COT] = {{0, 1}, {2, 3}};
+const int chanDen[SO_HANG][SO_COT] = {{4, 5}, {6, 7}};
+const int chanQuat[SO_HANG][SO_COT] = {{8, 9}, {10, 11}};
+
 Adafruit_MCP23X17 mcp;
 HienThi manHinh(SO_HANG, SO_COT);
 
-// Timer
-unsigned long lanCapNhatCamBienCuoi = 0;
-unsigned long lanCapNhatManHinhCuoi = 0;
-const unsigned long THOI_GIAN_CAP_NHAT_CAM_BIEN = 3000;
-const unsigned long THOI_GIAN_CAP_NHAT_MAN_HINH = 1000;
-unsigned long lanKiemTraModeCuoi = 0;
-const unsigned long THOI_GIAN_KIEM_TRA_MODE = 2950;
+// ========== Biến thời gian ==========
+unsigned long lastSensorUpdate = 0;
+unsigned long lastDisplayUpdate = 0;
+unsigned long lastTouchCheck = 0;
+const unsigned long SENSOR_INTERVAL = 3000;
+const unsigned long DISPLAY_INTERVAL = 1000;
+const unsigned long TOUCH_INTERVAL = 30;
 
-bool cheDoTruocDo = true;
+// ========== Trạng thái cũ ==========
+float nhietDoCu[SO_HANG][SO_COT];
+float doAmCu[SO_HANG][SO_COT];
+float anhSangCu[SO_HANG][SO_COT];
+int bomCu[SO_HANG][SO_COT];
+int denCu[SO_HANG][SO_COT];
+int quatCu[SO_HANG][SO_COT];
 
-// WiFi
+// ========== Kết nối WiFi ==========
 void connectToWiFi()
 {
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
@@ -65,7 +71,59 @@ void connectToWiFi()
   Serial.println("\nWiFi da ket noi");
 }
 
-// Firebase
+// ========== STREAM CALLBACK ==========
+void streamCallback(FirebaseStream data)
+{
+  String path = data.dataPath();
+  String value = data.stringData();
+  Serial.printf("[Stream] Thay doi: %s = %s\n", path.c_str(), value.c_str());
+
+  if (path == "/currentMode")
+  {
+    bool newMode = (value == "auto");
+    if (newMode != isAutoMode)
+    {
+      isAutoMode = newMode;
+      manHinh.datCheDoHienTai(isAutoMode ? CHE_DO_AUTO : CHE_DO_MANUAL);
+      Serial.printf("Che do thay doi thanh: %s\n", isAutoMode ? "AUTO" : "MANUAL");
+    }
+    return;
+  }
+
+  for (int i = 0; i < SO_HANG; i++)
+  {
+    for (int j = 0; j < SO_COT; j++)
+    {
+      String gardenId = "/gardenId" + String(i * SO_COT + j + 1);
+      HeThongVuon *cay = manHinh.layHeThongVuon(i, j);
+      if (!cay)
+        continue;
+
+      if (path == gardenId + "/mayBom")
+      {
+        cay->datTrangThaiBom(value == "1");
+      }
+      else if (path == gardenId + "/den")
+      {
+        cay->datTrangThaiDen(value == "1");
+      }
+      else if (path == gardenId + "/quat")
+      {
+        cay->datTrangThaiQuat(value == "1");
+      }
+    }
+  }
+}
+
+void streamTimeoutCallback(bool timeout)
+{
+  if (timeout)
+  {
+    Serial.println("Mat ket noi stream, dang thu lai...");
+  }
+}
+
+// ========== Kết nối Firebase ==========
 void connectToFirebase()
 {
   config.api_key = API_KEY;
@@ -75,7 +133,6 @@ void connectToFirebase()
 
   Firebase.reconnectWiFi(true);
   config.token_status_callback = tokenStatusCallback;
-
   Firebase.begin(&config, &auth);
 
   Serial.println("Dang ket noi Firebase...");
@@ -85,19 +142,20 @@ void connectToFirebase()
     delay(300);
     Serial.print(".");
   }
-
   firebaseReady = Firebase.ready();
+  Serial.println(firebaseReady ? "\nFirebase da san sang" : "\nFirebase loi ket noi");
 
-  if (firebaseReady)
+  if (!Firebase.RTDB.beginStream(&fbdo, "/"))
   {
-    Serial.println("\nFirebase da san sang");
+    Serial.printf("Loi stream: %s\n", fbdo.errorReason().c_str());
   }
   else
   {
-    Serial.println("\nFirebase loi ket noi");
+    Firebase.RTDB.setStreamCallback(&fbdo, streamCallback, streamTimeoutCallback);
   }
 }
 
+// ========== SETUP ==========
 void setup()
 {
   Serial.begin(115200);
@@ -110,20 +168,24 @@ void setup()
   if (!mcp.begin_I2C(MCP_ADDRESS))
   {
     Serial.println("Loi khoi tao MCP23017");
-    while (true)
+    while (1)
       ;
   }
 
-  Serial.println("MCP23017 da san sang");
-
-  manHinh.ganThongTinPhanCung(&mcp, chanDHT, chanDatAm, chanAnhSang, chanBomNuoc, chanDen, chanQuat);
+  manHinh.ganThongTinPhanCung(&mcp, chanDHT, chanDatAm, chanAnhSang,
+                              chanBomNuoc, chanDen, chanQuat);
 
   for (int i = 0; i < SO_HANG; i++)
   {
     for (int j = 0; j < SO_COT; j++)
     {
       manHinh.thietLapLuongCay(i, j, nullptr);
-      Serial.printf("Da khoi tao luong [%d][%d]\n", i, j);
+      nhietDoCu[i][j] = -999;
+      doAmCu[i][j] = -1;
+      anhSangCu[i][j] = -1;
+      bomCu[i][j] = -1;
+      denCu[i][j] = -1;
+      quatCu[i][j] = -1;
     }
   }
 
@@ -131,36 +193,15 @@ void setup()
   Serial.println("He thong san sang");
 }
 
+// ========== LOOP ==========
 void loop()
 {
-  unsigned long thoiGian = millis();
+  unsigned long now = millis();
 
-  // ===== 1. KIEM TRA CHE DO HOAT DONG =====
-  if (firebaseReady && thoiGian - lanKiemTraModeCuoi >= THOI_GIAN_KIEM_TRA_MODE)
+  // 1. Cập nhật dữ liệu cảm biến và gửi lên Firebase
+  if (now - lastSensorUpdate >= SENSOR_INTERVAL)
   {
-    lanKiemTraModeCuoi = thoiGian;
-
-    bool isAutoMode = true;
-    if (Firebase.RTDB.getString(&fbdo, "currentMode"))
-    {
-      String mode = fbdo.stringData();
-      isAutoMode = (mode == "auto");
-    }
-
-    if (isAutoMode != cheDoTruocDo)
-    {
-      Serial.printf("Chuyen che do: %s -> %s\n",
-                    cheDoTruocDo ? "AUTO" : "MANUAL",
-                    isAutoMode ? "AUTO" : "MANUAL");
-
-      cheDoTruocDo = isAutoMode;
-      manHinh.datCheDoHienTai(isAutoMode ? CHE_DO_AUTO : CHE_DO_MANUAL);
-    }
-  }
-  // 2. Doc cam bien va gui len Firebase
-  if (thoiGian - lanCapNhatCamBienCuoi > THOI_GIAN_CAP_NHAT_CAM_BIEN)
-  {
-    lanCapNhatCamBienCuoi = thoiGian;
+    lastSensorUpdate = now;
 
     for (int i = 0; i < SO_HANG; i++)
     {
@@ -171,101 +212,76 @@ void loop()
           continue;
 
         cay->docDuLieuCamBien();
-
         float nhietDo = cay->layNhietDo();
-        float doAmDat = cay->layDoAmDat();
+        float doAm = cay->layDoAmDat();
         float anhSang = cay->layAnhSang();
-        int bomMoi = cay->layTrangThaiBom() ? 1 : 0;
-        int denMoi = cay->layTrangThaiDen() ? 1 : 0;
-        int quatMoi = cay->layTrangThaiQuat() ? 1 : 0;
         String gardenId = "gardenId" + String(i * SO_COT + j + 1);
 
         if (isAutoMode)
-        {
-          cay->capNhat(); // cap nhat tu dong
-        }
-        else
-        {
-          if (Firebase.RTDB.getInt(&fbdo, gardenId + "/mayBom"))
-          {
-            cay->datTrangThaiBom(fbdo.intData() == 1);
-          }
-          if (Firebase.RTDB.getInt(&fbdo, gardenId + "/den"))
-          {
-            cay->datTrangThaiDen(fbdo.intData() == 1);
-          }
-          if (Firebase.RTDB.getInt(&fbdo, gardenId + "/quat"))
-          {
-            cay->datTrangThaiQuat(fbdo.intData() == 1);
-          }
-        }
+          cay->capNhat();
 
-        // Gui chi khi thay doi du lieu
-        static float nhietDoCu[2][2] = {{-1000, -1000}, {-1000, -1000}};
-        static float doAmCu[2][2] = {{-1, -1}, {-1, -1}};
-        static float anhSangCu[2][2] = {{-1, -1}, {-1, -1}};
-        static int bomCu[2][2] = {{-1, -1}, {-1, -1}};
-        static int denCu[2][2] = {{-1, -1}, {-1, -1}};
-        static int quatCu[2][2] = {{-1, -1}, {-1, -1}};
-
+        // Gửi dữ liệu cảm biến luôn
         if (abs(nhietDo - nhietDoCu[i][j]) > 0.3)
         {
           Firebase.RTDB.setFloat(&fbdo, gardenId + "/dhtNhietDo", nhietDo);
           nhietDoCu[i][j] = nhietDo;
         }
 
-        if (abs(doAmDat - doAmCu[i][j]) > 0.6)
+        if (abs(doAm - doAmCu[i][j]) > 0.6)
         {
-          Firebase.RTDB.setFloat(&fbdo, gardenId + "/dhtDoAm", doAmDat);
-          doAmCu[i][j] = doAmDat;
+          Firebase.RTDB.setFloat(&fbdo, gardenId + "/dhtDoAm", doAm);
+          doAmCu[i][j] = doAm;
         }
 
-        if (abs(anhSang - anhSangCu[i][j]) > 100)
+        if (abs(anhSang - anhSangCu[i][j]) > 50)
         {
           Firebase.RTDB.setFloat(&fbdo, gardenId + "/anhSang", anhSang);
           anhSangCu[i][j] = anhSang;
         }
 
-        if (bomMoi != bomCu[i][j])
+        // Gửi trạng thái thiết bị CHỈ khi ở chế độ tự động
+        if (isAutoMode)
         {
-          Firebase.RTDB.setInt(&fbdo, gardenId + "/mayBom", bomMoi);
-          bomCu[i][j] = bomMoi;
-        }
-        if (denMoi != denCu[i][j])
-        {
-          Firebase.RTDB.setInt(&fbdo, gardenId + "/den", denMoi);
-          denCu[i][j] = denMoi;
-        }
-        if (quatMoi != quatCu[i][j])
-        {
-          Firebase.RTDB.setInt(&fbdo, gardenId + "/quat", quatMoi);
-          quatCu[i][j] = quatMoi;
+          int bom = cay->layTrangThaiBom() ? 1 : 0;
+          int den = cay->layTrangThaiDen() ? 1 : 0;
+          int quat = cay->layTrangThaiQuat() ? 1 : 0;
+
+          if (bom != bomCu[i][j])
+          {
+            Firebase.RTDB.setInt(&fbdo, gardenId + "/mayBom", bom);
+            bomCu[i][j] = bom;
+          }
+
+          if (den != denCu[i][j])
+          {
+            Firebase.RTDB.setInt(&fbdo, gardenId + "/den", den);
+            denCu[i][j] = den;
+          }
+
+          if (quat != quatCu[i][j])
+          {
+            Firebase.RTDB.setInt(&fbdo, gardenId + "/quat", quat);
+            quatCu[i][j] = quat;
+          }
         }
 
-        Serial.printf("Luong [%d][%d] - Mode: %s\n", i, j, isAutoMode ? "AUTO" : "MANUAL");
-        Serial.printf("  Nhiet do: %.1f | Do am: %.1f | Anh sang: %.1f\n", nhietDo, doAmDat, anhSang);
-        Serial.printf("  Bom: %s | Den: %s | Quat: %s\n\n",
-                      cay->layTrangThaiBom() ? "BAT" : "TAT",
-                      cay->layTrangThaiDen() ? "BAT" : "TAT",
-                      cay->layTrangThaiQuat() ? "BAT" : "TAT");
+        Serial.printf("Luong [%d][%d] - Nhiet do: %.1f - Do am: %.1f - Anh sang: %.1f\n",
+                      i, j, nhietDo, doAm, anhSang);
       }
     }
   }
 
-  // 3. Cap nhat hien thi man hinh
-  if (thoiGian - lanCapNhatManHinhCuoi > THOI_GIAN_CAP_NHAT_MAN_HINH)
+  // 2. Cập nhật hiển thị
+  if (now - lastDisplayUpdate >= DISPLAY_INTERVAL)
   {
-    lanCapNhatManHinhCuoi = thoiGian;
+    lastDisplayUpdate = now;
     manHinh.capNhatHienThi();
   }
 
-  manHinh.capNhatTrangThaiNut();
-
-  int hang, cot;
-  manHinh.layLuongDangChon(hang, cot);
-  HeThongVuon *cay = manHinh.layHeThongVuon(hang, cot);
-  if (cay != nullptr && cay->laCheDoTuDong())
+  // 3. Cập nhật trạng thái nút
+  if (now - lastTouchCheck >= TOUCH_INTERVAL)
   {
-    cay->capNhat(); // cap nhat rieng cho luong dang chon
+    lastTouchCheck = now;
+    manHinh.capNhatTrangThaiNut();
   }
 }
