@@ -19,12 +19,12 @@ class StartPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 SizedBox(
-                  width: 90,
-                  height: 90,
+                  width: 70,
+                  height: 70,
                   child: Image.asset("lib/images/icon.png", fit: BoxFit.cover),
                 ),
                 SizedBox(
-                  width: 20,
+                  width: 10,
                 ), // Add some space between the image and text
                 SizedBox(
                   // This ensures the Column with text takes the remaining space
@@ -37,7 +37,7 @@ class StartPage extends StatelessWidget {
                           color: const Color.fromARGB(255, 27, 77, 29),
                           fontWeight: FontWeight.w900,
                           height: 1,
-                          fontSize: 38,
+                          fontSize: 28,
                         ),
                       ),
                       SizedBox(height: 5),
@@ -47,13 +47,13 @@ class StartPage extends StatelessWidget {
                           color: Colors.black,
                           fontWeight: FontWeight.w400,
                           height: 0.9,
-                          fontSize: 20,
+                          fontSize: 15,
                         ),
                       ),
                     ],
                   ),
                 ),
-                SizedBox(width: 20),
+                SizedBox(width: 18),
               ],
             ),
           ),
@@ -75,8 +75,8 @@ class StartPage extends StatelessWidget {
                 width: MediaQuery.of(context).size.width * 0.9,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
-                    vertical: 5,
-                    horizontal: 20,
+                    vertical: 3,
+                    horizontal: 15,
                   ),
                   child: Center(
                     child: Text(
@@ -85,7 +85,7 @@ class StartPage extends StatelessWidget {
                         color: Colors.white,
                         fontWeight: FontWeight.w700,
                         height: 1.5,
-                        fontSize: 25,
+                        fontSize: 22,
                       ),
                     ),
                     // You can add onEnter, onExit, etc. if needed

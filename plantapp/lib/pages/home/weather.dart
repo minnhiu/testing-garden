@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:plantapp/pages/home/weatherdets.dart';
 import 'package:weather/weather.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+// import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import '../../userdets.dart';
+
+const String OPENWEATHER_API = "0eecf52b94847862008fe796ae7bb0e2";
 
 class WeatherContainer extends StatefulWidget {
   const WeatherContainer({super.key});
@@ -18,11 +20,10 @@ class _WeatherContainerState extends State<WeatherContainer> {
 
   @override
   void initState() {
-
     super.initState();
     String location = Provider.of<UserInfo>(context, listen: false).location;
-    
-    final openWeatherApi = dotenv.env['OPENWEATHER_API'] ?? '';
+
+    final openWeatherApi = OPENWEATHER_API;
     _wf = WeatherFactory(openWeatherApi);
 
     _fetchWeather(location);

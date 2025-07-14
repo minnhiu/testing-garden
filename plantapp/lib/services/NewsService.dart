@@ -1,12 +1,18 @@
 // ignore: file_names
 import 'package:http/http.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:plantapp/pages/models/News.dart'; 
+// import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:plantapp/pages/models/News.dart';
+// constants.dart (hoặc bất kỳ file Dart nào)
+
+const String NEWS_API_KEY = "f2c365382e332867a5bd6f93df3909dc";
+
+const String NEWS_API_URL =
+    "https://gnews.io/api/v4/search?q=agriculture&lang=en&country=en&max=7&apikey=";
 
 class NewsService {
   Client client = Client();
-  final String _apiKey = dotenv.env['NEWS_API_KEY'] ?? '';
-  final String baseUrl = dotenv.env['NEWS_API_URL'] ?? '';
+  final String _apiKey = NEWS_API_KEY;
+  final String baseUrl = NEWS_API_URL;
 
   Future<List<Article>> fetchNewsList({String category = ''}) async {
     // Construct the URL with the given category (if provided)

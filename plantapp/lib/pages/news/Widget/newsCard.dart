@@ -105,7 +105,7 @@ class NewsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool hasImage = _isValidImageUrl(article.urlToImage);
+    final bool hasImage = _isValidImageUrl(article.image);
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
@@ -129,7 +129,7 @@ class NewsCard extends StatelessWidget {
                   topRight: Radius.circular(10),
                 ),
                 child: Image.network(
-                  article.urlToImage!,
+                  article.image!,
                   width: double.infinity,
                   height: 180,
                   fit: BoxFit.cover,
@@ -161,7 +161,7 @@ class NewsCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    article.getDateOnly(),
+                    article.getFormattedDate(),
                     style: GoogleFonts.poppins(
                       fontSize: 12,
                       color: Colors.black54,

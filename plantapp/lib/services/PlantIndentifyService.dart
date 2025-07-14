@@ -1,12 +1,16 @@
 // ignore: file_names
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+// import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+const String PLANTID_API_KEY =
+    "CJsTiXLUFRC2Vc8Wn6aFKVVnqjTdDudMVbfSEv4E2SWH3rabK1";
+const String PLANTID_API_URL = "https://plant.id/api/v3";
 
 class PlantIdentifyService {
   static Future<String?> identifyPlant(String base64Image, String path) async {
     final headers = {
-      'Api-Key': dotenv.env['PLANTID_API_KEY'] ?? '',
+      'Api-Key': PLANTID_API_KEY,
       'Content-Type': 'application/json',
     };
 
@@ -16,7 +20,7 @@ class PlantIdentifyService {
       "longitude": 16.608,
       "similar_images": true,
     });
-    final apiUrl = dotenv.env['PLANTID_API_URL'] ?? '';
+    final apiUrl = PLANTID_API_URL;
     final url = Uri.parse("$apiUrl$path");
     final request = http.Request('POST', url);
     request.headers.addAll(headers);

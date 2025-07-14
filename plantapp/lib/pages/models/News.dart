@@ -2,120 +2,108 @@ import 'dart:convert';
 import 'package:intl/intl.dart';
 
 class NewsApiResponse {
-  String status;
-  int totalResults;
-  List<Article> articles;
+  final String status;
+  final int totalArticles;
+  final List<Article> articles;
 
   NewsApiResponse({
     required this.status,
-    required this.totalResults,
+    required this.totalArticles,
     required this.articles,
   });
 
   factory NewsApiResponse.fromRawJson(String str) =>
       NewsApiResponse.fromJson(json.decode(str));
 
-  String toRawJson() => json.encode(toJson());
-
   factory NewsApiResponse.fromJson(Map<String, dynamic> json) =>
       NewsApiResponse(
         status: json["status"] ?? "",
-        totalResults: json["totalResults"] ?? 0,
+        totalArticles: json["totalArticles"] ?? 0,
         articles: json["articles"] == null
             ? []
             : List<Article>.from(
                 json["articles"].map((x) => Article.fromJson(x))),
       );
 
+  String toRawJson() => json.encode(toJson());
+
   Map<String, dynamic> toJson() => {
         "status": status,
-        "totalResults": totalResults,
+        "totalArticles": totalArticles,
         "articles": List<dynamic>.from(articles.map((x) => x.toJson())),
       };
 }
 
 class Article {
-  Source? source; // Nullable because Source can be null
-  String? author;
-  String? title;
-  String? description;
-  String? url;
-  String? urlToImage;
-  DateTime? publishedAt; // Nullable DateTime
-  String? content;
+  final String? title;
+  final String? description;
+  final String? content;
+  final String? url;
+  final String? image; // <-- Trường đúng từ GNews
+  final DateTime? publishedAt;
+  final Source? source;
 
   Article({
-    this.source,
-    this.author,
     this.title,
     this.description,
-    this.url,
-    this.urlToImage,
-    this.publishedAt,
     this.content,
+    this.url,
+    this.image,
+    this.publishedAt,
+    this.source,
   });
 
   factory Article.fromRawJson(String str) => Article.fromJson(json.decode(str));
 
-  String toRawJson() => json.encode(toJson());
-
   factory Article.fromJson(Map<String, dynamic> json) => Article(
-        source: json["source"] == null ? null : Source.fromJson(json["source"]),
-        author: json["author"],
         title: json["title"],
         description: json["description"],
+        content: json["content"],
         url: json["url"],
-        urlToImage: json["urlToImage"],
+        image: json["image"],
         publishedAt: json["publishedAt"] == null
             ? null
-            : DateTime.parse(json["publishedAt"]),
-        content: json["content"],
+            : DateTime.tryParse(json["publishedAt"]),
+        source: json["source"] != null ? Source.fromJson(json["source"]) : null,
       );
 
+  String toRawJson() => json.encode(toJson());
+
   Map<String, dynamic> toJson() => {
-        "source": source?.toJson(),
-        "author": author,
         "title": title,
         "description": description,
-        "url": url,
-        "urlToImage": urlToImage,
-        "publishedAt": publishedAt?.toIso8601String(),
         "content": content,
+        "url": url,
+        "image": image,
+        "publishedAt": publishedAt?.toIso8601String(),
+        "source": source?.toJson(),
       };
 
-  String getTime() {
-    var formatter = DateFormat('dd MMMM yyyy h:m');
-    return formatter
-        .format(publishedAt ?? DateTime.now()); // Default to now if null
-  }
-
-  String getDateOnly() {
-    var formatter = DateFormat('dd MMMM yyyy');
-    return formatter
-        .format(publishedAt ?? DateTime.now()); // Default to now if null
+  String getFormattedDate() {
+    final formatter = DateFormat('dd MMM yyyy');
+    return publishedAt != null
+        ? formatter.format(publishedAt!)
+        : 'Unknown date';
   }
 }
 
 class Source {
-  String? id; // Nullable
-  String? name; // Nullable
+  final String? name;
+  final String? url;
 
-  Source({
-    this.id,
-    this.name,
-  });
+  Source({this.name, this.url});
 
   factory Source.fromRawJson(String str) => Source.fromJson(json.decode(str));
 
-  String toRawJson() => json.encode(toJson());
-
   factory Source.fromJson(Map<String, dynamic> json) => Source(
-        id: json["id"],
         name: json["name"],
+        url: json["url"],
       );
 
+  String toRawJson() => json.encode(toJson());
+
   Map<String, dynamic> toJson() => {
-        "id": id,
         "name": name,
+        "url": url,
       };
 }
